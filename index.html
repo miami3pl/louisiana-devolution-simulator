@@ -112,10 +112,45 @@
   @media(max-width:1100px){ .dwrap{display:block} #ladder{width:auto;border-left:0;padding-left:0;
     border-top:1px solid var(--rule);padding-top:10px;margin-top:10px;max-height:none} }
 
+
+  #ladder .ldec{background:var(--code);border:1.5px solid var(--accent);border-radius:9px;
+    padding:9px 11px;margin:0 0 10px}
+  #ladder .ldec .dlab{display:block;font:700 9px ui-sans-serif,system-ui;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  #ladder .ldec b{font:700 15px ui-sans-serif,system-ui;color:var(--ink)}
+  #ladder .ldec .dsub{display:block;font:500 11px ui-sans-serif,system-ui;color:var(--muted);margin-top:2px}
+  #ladder .lq{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+  #ladder .ln{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+    border-radius:50%;background:var(--rule);color:var(--panel);font:700 9.5px ui-monospace,monospace}
+  #ladder .lr.hit .ln{background:var(--accent)}
+  #ladder .yn{font:700 8.5px ui-sans-serif,system-ui;letter-spacing:.08em;padding:1px 5px;border-radius:3px}
+  #ladder .yn.yes{background:var(--takes);color:var(--alive);border:1px solid var(--alive)}
+  #ladder .yn.no{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+  #ladder .yn.skip{background:transparent;color:var(--rule);border:1px solid var(--rule)}
+  #ladder .lask{display:block;font:600 12px ui-sans-serif,system-ui;color:var(--ink);margin:1px 0 2px}
+  #ladder .lr:not(.reached) .lask{color:var(--muted);opacity:.75}
+  #ladder .lt{display:block;font:400 11px/1.4 ui-sans-serif,system-ui;color:var(--muted)}
   #ladder .lwho{display:block;margin-top:4px;font:500 11.5px/1.45 ui-sans-serif,system-ui}
   #ladder .lwho.take{color:var(--accent2);font-weight:600}
   #ladder .lwho.none{color:var(--muted);font-style:italic}
   #ladder .lwho.later{color:var(--muted);opacity:.8;font-style:italic}
+
+
+  @keyframes skGlow{0%,100%{opacity:.25;stroke-width:3}50%{opacity:.95;stroke-width:7}}
+  #diagbox g.pn.glow > rect:first-of-type{
+    stroke:var(--accent2)!important; stroke-width:3.4!important}
+  #diagbox g.pn.glow{ animation:skGlow 1.1s ease-in-out infinite;
+    transform-box:fill-box; transform-origin:center }
+  [data-who]{cursor:default}
+  .take[data-who]:hover, .pw:hover{background:var(--code);border-radius:6px}
+  @media (prefers-reduced-motion:reduce){ #diagbox g.pn.glow{animation:none}
+    #diagbox g.pn.glow > rect:first-of-type{stroke-width:5!important} }
+  #ladder .lwhy{margin:10px 0 0;padding:10px 11px;border-radius:9px;
+    background:var(--lesson);border-left:3px solid var(--lessonline)}
+  #ladder .lwhy .wh{display:block;font:700 10px ui-sans-serif,system-ui;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--lessonline);margin-bottom:5px}
+  #ladder .lwhy p{margin:0;font:400 11.5px/1.55 ui-sans-serif,system-ui;color:var(--ink)}
+  #ladder .lwhy b{font-weight:700}
   #ladder .lhow{margin-top:14px;padding-top:11px;border-top:1px solid var(--rule)}
   #ladder .hk{font:500 11.5px/1.6 ui-sans-serif,system-ui;color:var(--muted);margin:0 0 3px}
   #ladder kbd{display:inline-block;font:700 10px ui-monospace,Menlo,monospace;
@@ -604,6 +639,7 @@
   ];
   var P, GENS, LINKS, SCEN;
   var st={}, prop='separate', will='no', quiz=false, revealed=false, cur=null;
+  var DECNAME='';   // who the decedent is, once you re-root onto a named person
   // st is populated by useModel() once a family model is loaded
 
   function A(id){ return st[id]===0; }             // alive
@@ -611,6 +647,11 @@
   function AFT(id){ return st[id]===2; }           // survived then died -> transmission
   function inPlay(id){ return st[id]===0||st[id]===1||st[id]===2; }
   function gcd(a,b){ return b?gcd(b,a%b):a; }
+  function ordinal(n){
+    n=parseInt(n,10); if(isNaN(n)) return '';
+    var t=n%100; if(t>=11&&t<=13) return n+'th';
+    return n+({1:'st',2:'nd',3:'rd'}[n%10]||'th');
+  }
   function frac(n,d){ var k=gcd(n,d)||1,nn=n/k,dd=d/k; return dd===1?String(nn):nn+'/'+dd; }
   function grp(cls){ return P.filter(function(p){return p.cls===cls && A(p.id);}); }
   function issueOf(id){ return P.filter(function(p){return p.repOf===id && (A(p.id)||AFT(p.id));}); }
@@ -708,7 +749,7 @@
   };
   var MODEL='generic';
   function useModel(k){
-    MODEL=k; var m=MODELS[k];
+    MODEL=k; DECNAME=''; var m=MODELS[k];
     // infer sex from the role words the models already use
     if(m.P) m.P.forEach(function(q){ if(!q.sex){ var g=sexFromLabel(q.label)||sexFromLabel(q.tag||''); if(g) q.sex=g; } });
     P=m.P; GENS=m.GENS; LINKS=m.LINKS; SCEN=m.SCEN;
@@ -874,7 +915,7 @@
       var nd=Math.min.apply(null,colls.map(function(p){return p.deg;}));
       var win=colls.filter(function(p){return p.deg===nd;}), lost=colls.filter(function(p){return p.deg>nd;});
       step('<b>More remote collaterals</b> — the nearest in degree excludes all others','896',true);
-      win.forEach(function(p){takers.push({cls:'',who:p.label,what:'<b>'+frac(1,win.length)+'</b> — '+nd+'rd/th degree',art:'896'});});
+      win.forEach(function(p){takers.push({cls:'',who:p.label,what:'<b>'+frac(1,win.length)+'</b> — '+ordinal(nd)+' degree',art:'896'});});
       if(lost.length) notes.push('<b>Excluded by degree:</b> '+lost.map(function(p){return p.label+' ('+p.deg+'th)';}).join(', ')+
         '. <b>And art. 884 will not help them</b> — representation in the collateral line reaches only descendants <b>of brothers and sisters</b>, so a cousin cannot represent a predeceased uncle. <b>That is <i>Succession of Aranyosi</i>:</b> aunts and uncle at the <b>3rd</b> degree excluded the cousin at the <b>4th</b>.');
       step('The State','902',false);
@@ -1124,7 +1165,7 @@
     {y:86,  lab:'Parents · aunts & uncles',ids:['mom','dad','uncle']},
     {y:158, lab:"Decedent's generation",   ids:['spouse','sibF1','sibF2','sibM','sibP','sibP2'], dec:true},
     {y:236, lab:'Children · nieces · cousins', ids:['c1','c2','c3','niece','cous']},
-    {y:308, lab:'Grandchildren',           ids:['a1','a2','c3a']}
+    {y:308, lab:'Sub-children \u00b7 grandchildren', ids:['a1','a2','c3a']}
   ];
 
   function shareMap(){
@@ -1225,7 +1266,8 @@
       if(id==='__DEC__'){
         o.push('<g class="pn" data-p="__DEC__" style="cursor:context-menu">');
         o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="9" fill="var(--code)" stroke="var(--accent)" stroke-width="3"/>');
-        o.push('<text x="'+(x+bw/2)+'" y="'+(y+28)+'" font-size="13" font-weight="700" fill="var(--accent)">◆ DECEDENT</text>');
+        o.push('<text x="'+(x+bw/2)+'" y="'+(DECNAME?y+18:y+28)+'" font-size="'+(DECNAME?12:13)+'" font-weight="700" fill="var(--accent)">◆ '+esc(DECNAME||'DECEDENT')+'</text>');
+        if(DECNAME) o.push('<text x="'+(x+bw/2)+'" y="'+(y+34)+'" font-size="9" font-weight="700" fill="var(--accent)" opacity=".75" letter-spacing="1">THE DECEDENT</text>');
         o.push('</g>');
         return;
       }
@@ -1236,17 +1278,24 @@
       if(stt===0){ line='var(--alive)'; txt='var(--ink)'; tag='alive'; }
       else if(stt===1){ fill='var(--rep)'; line='var(--before)'; txt='var(--before)'; tag='died BEFORE'; }
       else if(stt===2){ fill='var(--tr)'; line='var(--after)'; txt='var(--after)'; tag='died AFTER'; }
-      if(takes){ fill='var(--takes)'; line='var(--alive)'; }
+      if(takes){ fill='var(--takes)'; line='var(--alive)'; txt='var(--alive)'; }
       // Genealogy convention: square-ish for male, round for female, plain for
       // unstated. rx alone carries it, so it survives the PNG export.
       var rx = pp.sex==='m' ? 3 : (pp.sex==='f' ? 22 : 9);
       o.push('<g class="pn" data-p="'+id+'" style="cursor:pointer">');
-      o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'" stroke="'+line+'" stroke-width="2"'+
-             (stt===1&&!takes?' stroke-dasharray="5 3"':'')+'/>');
+      // a taker is the answer, so it should be unmistakable at a glance
+      if(takes) o.push('<rect x="'+(x-3)+'" y="'+(y-3)+'" width="'+(bw+6)+'" height="'+(h+6)+'" rx="'+(rx+3)+'" fill="none" stroke="var(--alive)" stroke-width="1.4" opacity=".38"/>');
+      o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'" stroke="'+line+'" stroke-width="'+(takes?3.2:2)+'"'+
+             (stt===1&&!takes?' stroke-dasharray="5 3"':'')+(stt===2&&!takes?' stroke-dasharray="1 4"':'')+'/>');
       if(pp.sex) o.push('<text x="'+(x+9)+'" y="'+(y+13)+'" font-size="10" font-weight="700" fill="'+line+'" opacity=".85" text-anchor="start">'+(pp.sex==='m'?'\u2642':'\u2640')+'</text>');
       o.push('<text x="'+(x+bw/2)+'" y="'+(y+19)+'" font-size="12" font-weight="700" fill="'+txt+'">'+esc(pp.label)+'</text>');
-      if(takes) o.push('<text x="'+(x+bw/2)+'" y="'+(y+37)+'" font-size="14" font-weight="700" fill="var(--accent2)">'+takes+'</text>');
-      else o.push('<text x="'+(x+bw/2)+'" y="'+(y+36)+'" font-size="9" fill="'+txt+'" opacity=".8">'+tag+'</text>');
+      var sub = (pp.role? esc(pp.role)+' · ' : '') + tag;
+      if(takes){
+        o.push('<text x="'+(x+bw/2)+'" y="'+(y+35)+'" font-size="14" font-weight="700" fill="var(--accent2)">'+takes+'</text>');
+        if(pp.role) o.push('<text x="'+(x+bw/2)+'" y="'+(y+44)+'" font-size="8" fill="'+txt+'" opacity=".7">'+esc(pp.role)+'</text>');
+      } else {
+        o.push('<text x="'+(x+bw/2)+'" y="'+(y+36)+'" font-size="9" fill="'+txt+'" opacity=".8">'+sub+'</text>');
+      }
       if(stt===1&&!takes) o.push('<line x1="'+(x+6)+'" y1="'+(y+h-6)+'" x2="'+(x+bw-6)+'" y2="'+(y+6)+'" stroke="var(--before)" stroke-width="1.6" opacity=".45"/>');
       o.push('</g>');
     });
@@ -1323,7 +1372,7 @@
   // repOf wrong here would silently corrupt every share on the page.
   var ROLES=[
     {k:'child',   lab:'Child of decedent',        tier:'Children',    f:{cls:'desc',deg:1},              from:'__DEC__'},
-    {k:'gk',      lab:'Grandchild (child of…)',   tier:'Grandchildren',f:{cls:'gk',deg:2},               parentOf:'desc'},
+    {k:'gk',      lab:'Sub-child (child of a child)', tier:'Grandchildren',f:{cls:'gk',deg:2},           parentOf:'desc'},
     {k:'sibF',    lab:'Sibling — full blood',     tier:"Decedent's generation", f:{cls:'sib',deg:2,blood:'full'}, from:'PARENTS'},
     {k:'sibM',    lab:'Half-sibling — same mother',tier:"Decedent's generation",f:{cls:'sib',deg:2,blood:'m'},    from:'MOM'},
     {k:'sibP',    lab:'Half-sibling — same father',tier:"Decedent's generation",f:{cls:'sib',deg:2,blood:'p'},    from:'DAD'},
@@ -1451,7 +1500,8 @@
     // changing the sex renames a gendered role word, and its tag with it
     if(sx && sx!==pp.sex){
       pp.label = swapGendered(pp.label, sx);
-      if(pp.tag) pp.tag = swapGendered(pp.tag, sx);
+      if(pp.role) pp.role = swapGendered(pp.role, sx);
+      if(pp.tag)  pp.tag  = swapGendered(pp.tag,  sx);
     }
     pp.sex=sx;
   }
@@ -1522,8 +1572,10 @@
       var newSex=host.querySelector('.sx').value||'';
       if(newSex!==pp.sex){ setSex(pp,newSex); }        // may rewrite the label
       if(v && v!==pp.label){
+        // A personal name is ADDED to the role, never swapped for it: you still
+        // need to see that "Maria" is the mother when you read the tree.
+        if(!pp.role) pp.role=pp.label;
         pp.label=v;
-        // typing "Grandfather" over a blank sex should set the sex too
         if(!pp.sex){ var inf=sexFromLabel(v); if(inf) pp.sex=inf; }
       }
       st[id]=parseInt(host.querySelector('.stt').value,10)||0;
@@ -1547,7 +1599,10 @@
     var role = (pid==='__DEC__') ? 'child'
              : (par && par.cls==='sib') ? 'sibdesc'
              : 'gk';
-    addPerson('New person', role, pid==='__DEC__'?null:pid);
+    var nm = role==='child' ? 'New child'
+           : role==='gk'    ? 'New sub-child'
+           : 'New niece/nephew';
+    addPerson(nm, role, pid==='__DEC__'?null:pid);
     var added=P[P.length-1];
     if(added) setTimeout(function(){
       var g=document.querySelector('#diagbox g.pn[data-p="'+added.id+'"]');
@@ -1607,259 +1662,116 @@
 
 
   function renderLadder(){
-    // The ladder IS the reasoning: the Code walks classes of heir in order and
-    // stops at the first one with somebody in it. Abstract class names are not
-    // enough — name the PEOPLE, and on an empty rung say WHO was there and why
-    // they did not take. That is the question a reader actually has.
+    // Not a list of articles — a walk-through. Name the decedent, then ask the
+    // Code's questions in order, answer each YES or NO against the actual
+    // people, and stop where the Code stops. That is what a student has to be
+    // able to reproduce on an exam.
     var el=document.getElementById('ladder'); if(!el) return;
     var r; try{ r=compute(); }catch(e){ el.innerHTML=''; return; }
     var rows=r.steps||[], hitAt=-1;
-    rows.forEach(function(x,i){ if(x.hit && hitAt<0) hitAt=i; });
+    rows.forEach(function(x,i){ if(x.hit&&hitAt<0) hitAt=i; });
 
-    // which classes of person each rung is about, keyed off its articles
     function classesFor(art){
       var a=String(art||'');
-      if(/88[5-9]|890/.test(a))      return ['desc','gk'];
-      if(/89[123]/.test(a))          return ['parent','sib','sibdesc'];
-      if(/894/.test(a))              return ['spouse'];
-      if(/895/.test(a))              return ['asc'];
-      if(/89[6-9]|90[01]/.test(a))   return ['coll'];
+      if(/88[5-9]|890/.test(a))    return ['desc','gk'];
+      if(/89[123]/.test(a))        return ['parent','sib','sibdesc'];
+      if(/894/.test(a))            return ['spouse'];
+      if(/895/.test(a))            return ['asc'];
+      if(/89[6-9]|90[01]/.test(a)) return ['coll'];
       return [];
     }
-    function statusWord(id){
-      return st[id]===0 ? 'alive' : (st[id]===1 ? 'died before' : 'died after');
+    function ask(art){
+      var a=String(art||'');
+      if(/88[5-9]|890/.test(a))    return 'Did the decedent leave descendants?';
+      if(/89[123]/.test(a))        return 'Any parents, brothers or sisters?';
+      if(/894/.test(a))            return 'A surviving spouse, not judicially separated?';
+      if(/895/.test(a))            return 'Any more remote ascendants?';
+      if(/89[6-9]|90[01]/.test(a)) return 'Any more remote collaterals?';
+      if(/902/.test(a))            return 'Nobody at all?';
+      return '';
     }
-    function whoOn(art){
+    function statusWord(id){ return st[id]===0?'alive':(st[id]===1?'died before':'died after'); }
+    function members(art){
       var cls=classesFor(art); if(!cls.length) return null;
       var mem=P.filter(function(q){ return cls.indexOf(q.cls)>-1; });
-      if(!mem.length) return {none:true, list:'nobody of this class is in the tree'};
-      var alive=mem.filter(function(q){ return st[q.id]===0; });
-      var gone =mem.filter(function(q){ return st[q.id]!==0; });
-      return {
-        alive: alive.map(function(q){return q.label;}),
-        gone : gone.map(function(q){return q.label+' ('+statusWord(q.id)+')';})
-      };
+      return {alive:mem.filter(function(q){return st[q.id]===0;}),
+              gone :mem.filter(function(q){return st[q.id]!==0;})};
     }
 
-    var takersByName={};
-    (r.takers||[]).forEach(function(t){ takersByName[t.who]=t.what; });
+    var who = DECNAME ? esc(DECNAME) : 'the decedent';
+    var html='<div class="ldec"><span class="dlab">Step 0 \u00b7 who died</span>'+
+             '<b>\u25c6 '+who+'</b>'+
+             '<span class="dsub">'+(prop==='community'?'community property':'separate property')+
+             ' \u00b7 '+(will==='yes'?'left a will':'intestate')+'</span></div>';
 
-    var html='<p class="lh">The ladder \u00b7 '+(prop==='community'?'community property':'separate property')+'</p>';
     html+=rows.map(function(x,i){
-      var cls='lr'+((hitAt<0||i<=hitAt)?' reached':'')+(x.hit?' hit':'');
-      var who=whoOn(x.art), detail='';
+      var reached=(hitAt<0||i<=hitAt), cls='lr'+(reached?' reached':'')+(x.hit?' hit':'');
+      var m=members(x.art), verdict='', detail='';
       if(x.hit){
+        verdict='<span class="yn yes">YES</span>';
         var names=(r.takers||[]).map(function(t){
-          return '<b>'+esc(t.who)+'</b> '+esc(t.what);
+          var bare=String(t.who).replace(/\s*\(.*$/,'');
+          return '<span class="pw" data-who="'+esc(bare)+'"><b>'+esc(t.who)+'</b> '+esc(t.what)+'</span>';
         }).join(' \u00b7 ');
-        detail='<span class="stop">\u2190 the answer stops here</span>'+
-               (names?'<span class="lwho take">'+names+'</span>':'');
-      } else if(i<hitAt || hitAt<0){
-        if(who && who.none) detail='<span class="lwho none">'+who.list+'</span>';
-        else if(who && !who.alive.length && who.gone.length)
-          detail='<span class="lwho none">all predeceased \u2014 '+esc(who.gone.join(', '))+'</span>';
-        else if(who && who.alive.length)
-          detail='<span class="lwho none">skipped \u2014 a nearer class took first</span>';
-        else detail='<span class="lwho none">nobody on this rung</span>';
+        detail='<span class="lwho take">'+(names||'takes')+'</span>'+
+               '<span class="stop">\u2190 the Code stops here</span>';
+      } else if(reached){
+        verdict='<span class="yn no">NO</span>';
+        if(m && !m.alive.length && m.gone.length)
+          detail='<span class="lwho none">'+esc(m.gone.map(function(q){return q.label+' ('+statusWord(q.id)+')';}).join(', '))+'</span>';
+        else if(m && m.alive.length)
+          detail='<span class="lwho none">a nearer class already took</span>';
+        else detail='<span class="lwho none">nobody of this class in the tree</span>';
       } else {
-        if(who && who.alive.length)
-          detail='<span class="lwho later">never reached \u2014 '+esc(who.alive.join(', '))+' would be next</span>';
-        else detail='<span class="lwho later">never reached</span>';
+        verdict='<span class="yn skip">\u2014</span>';
+        detail='<span class="lwho later">never reached'+
+          (m&&m.alive.length?' \u2014 '+esc(m.alive.map(function(q){return q.label;}).join(', '))+' would be next':'')+'</span>';
       }
       return '<div class="'+cls+'">'+
-        '<span class="la">'+esc(x.art||'')+'</span>'+
+        '<div class="lq"><span class="ln">'+(i+1)+'</span>'+verdict+
+        '<span class="la">'+esc(x.art||'')+'</span></div>'+
+        '<span class="lask">'+ask(x.art)+'</span>'+
         '<span class="lt">'+x.t+detail+'</span></div>';
     }).join('');
 
+    // Why this result, in the Code's own terms. Representation and transmission
+    // reach the same people by opposite routes, and the difference is the whole
+    // of Chapter 3 — so say it whenever one of them is actually operating.
+    var joined=(r.takers||[]).map(function(t){return t.who+' '+t.what;}).join(' ');
+    var whys=[];
+    if(/representing/i.test(joined)){
+      whys.push(['Representation \u00b7 arts. 881\u2013885',
+        'A child of the decedent died <b>BEFORE</b> him, so <b>nothing ever vested</b> in that child \u2014 he was not alive to inherit. Representation is a <b>fiction of law</b>: his own children are placed in his degree and take <b>directly from the decedent</b>, not through their father\u2019s estate.'+
+        '<br><br><b>The spirit:</b> the branch keeps exactly the share the parent would have had \u2014 <b>by roots, not by heads</b> \u2014 so the accident of a parent dying early neither disinherits the grandchildren nor enlarges the other branches. It is fenced to <b>descendants and siblings</b> only, because it is a fiction and the law rations it.']);
+    }
+    if(/successors|transmission/i.test(joined)){
+      whys.push(['Transmission \u00b7 art. 937',
+        'This heir <b>survived</b> the decedent and died afterwards. The inheritance had already <b>vested at the instant of the decedent\u2019s death</b>, so it was <b>his own property</b> \u2014 it now passes <b>through his estate</b> to his own successors.'+
+        '<br><br><b>The spirit:</b> nothing is being pretended here, so transmission needs no fence \u2014 it is <b>open to anyone</b>, including people with no blood tie to the decedent at all. Same family, same shares, opposite routes.']);
+    }
+    if(/usufruct/i.test(joined)){
+      whys.push(['The spouse\u2019s usufruct \u00b7 art. 890',
+        'The children take the <b>naked ownership</b> and the surviving spouse takes a <b>usufruct</b> over the decedent\u2019s share of the community \u2014 use and fruits for life (or until remarriage), with ownership already sitting in the children.'+
+        '<br><br><b>The spirit:</b> it keeps the surviving spouse in the home and living off the property without taking the property out of the bloodline.']);
+    }
+    if(whys.length){
+      html+=whys.map(function(w){
+        return '<div class="lwhy"><span class="wh">'+w[0]+'</span><p>'+w[1]+'</p></div>';
+      }).join('');
+    }
     html+='<div class="lhow"><p class="lh" style="margin:0 0 6px">How to use it</p>'+
       '<div class="hk"><kbd>click</kbd> a person \u2014 alive \u2192 died BEFORE \u2192 died AFTER</div>'+
-      '<div class="hk"><kbd>double-click</kbd> \u2014 rename, set sex, change who they descend from</div>'+
-      '<div class="hk"><kbd>right-click</kbd> \u2014 every option, including <i>add child of this person</i></div>'+
-      '<div class="hk"><kbd>C</kbd> or <kbd>\u2630</kbd> \u2014 open facts &amp; options \u00b7 <kbd>Esc</kbd> closes</div>'+
-      '<div class="hk"><kbd>hover</kbd> any bold article \u2014 its verbatim text</div>'+
-      '<div class="hk"><kbd>Save PNG</kbd> \u2014 the tree <i>with</i> the facts and who takes</div>'+
-      '</div>';
+      '<div class="hk"><kbd>double-click</kbd> \u2014 add a name (the role stays), sex, parent</div>'+
+      '<div class="hk"><kbd>right-click</kbd> \u2014 everything, incl. <i>make this person the decedent</i></div>'+
+      '<div class="hk"><kbd>C</kbd> facts &amp; options \u00b7 <kbd>Esc</kbd> close</div>'+
+      '<div class="hk"><kbd>hover</kbd> a bold article \u2014 its verbatim text</div></div>';
     el.innerHTML=html;
-  }
-
-
-  // ---------------- RE-ROOT: make anyone the decedent (2026-08-31) ----------
-  // Every relationship field (cls, deg, blood, repOf) is stored RELATIVE to the
-  // decedent, so swapping the decedent is not a flag flip — it is a
-  // re-derivation of the whole graph. We do derive it: the parent links are the
-  // ground truth, and civil-law degree IS path length (up to the common
-  // ancestor and back down). Nothing here is guessed from the old fields.
-  function parentsOf(id){
-    var out=[]; LINKS.forEach(function(L){ if(L.t.indexOf(id)>-1) L.f.forEach(function(f){ if(out.indexOf(f)<0) out.push(f); }); });
-    return out;
-  }
-  function childrenOf(id){
-    var out=[]; LINKS.forEach(function(L){ if(L.f.indexOf(id)>-1) L.t.forEach(function(t){ if(out.indexOf(t)<0) out.push(t); }); });
-    return out;
-  }
-  function ancestorDist(id){                 // ancestor id -> generations up
-    var seen={}, q=[[id,0]];
-    while(q.length){
-      var cur=q.shift(), who=cur[0], d=cur[1];
-      parentsOf(who).forEach(function(f){
-        if(seen[f]===undefined || d+1<seen[f]){ seen[f]=d+1; q.push([f,d+1]); }
-      });
-    }
-    return seen;
-  }
-  function descendantDist(id){               // descendant id -> generations down
-    var seen={}, q=[[id,0]];
-    while(q.length){
-      var cur=q.shift(), who=cur[0], d=cur[1];
-      childrenOf(who).forEach(function(t){
-        if(seen[t]===undefined || d+1<seen[t]){ seen[t]=d+1; q.push([t,d+1]); }
-      });
-    }
-    return seen;
-  }
-  function generationIndex(){                // absolute depth, for laying out rows
-    var g={}, guard=0;
-    P.concat([{id:'__DEC__'}]).forEach(function(q){ g[q.id]=0; });
-    var changed=true;
-    while(changed && guard++<40){
-      changed=false;
-      Object.keys(g).forEach(function(id){
-        var pr=parentsOf(id);
-        if(!pr.length) return;
-        var mx=-1; pr.forEach(function(f){ if(g[f]!==undefined && g[f]>mx) mx=g[f]; });
-        if(mx>=0 && g[id]!==mx+1){ g[id]=mx+1; changed=true; }
-      });
-    }
-    return g;
-  }
-  function recomputeRelations(){
-    var up=ancestorDist('__DEC__'), down=descendantDist('__DEC__');
-    var myParents=parentsOf('__DEC__');
-    P.forEach(function(q){
-      var id=q.id;
-      delete q.repOf; q.blood=undefined; q.line=undefined;
-      if(down[id]!==undefined){                      // my descendant
-        q.deg=down[id];
-        q.cls = down[id]===1 ? 'desc' : 'gk';
-        if(down[id]>1){                              // takes through my child
-          var cur=id, hop=parentsOf(cur);
-          while(hop.length && down[hop[0]]!==undefined && down[hop[0]]>1){ cur=hop[0]; hop=parentsOf(cur); }
-          if(hop.length) q.repOf=hop[0];
-        }
-        return;
-      }
-      if(up[id]!==undefined){                        // my ancestor
-        q.deg=up[id];
-        q.cls = up[id]===1 ? 'parent' : 'asc';
-        return;
-      }
-      // collateral: find the nearest ancestor of mine that is also above them
-      var theirUp=ancestorDist(id), best=null;
-      Object.keys(up).forEach(function(a){
-        if(theirUp[a]===undefined) return;
-        var d=up[a]+theirUp[a];
-        if(!best || d<best.d) best={a:a,d:d,mine:up[a],theirs:theirUp[a]};
-      });
-      if(!best){ q.cls='none'; q.deg=99; return; }   // no blood tie at all
-      q.deg=best.d;
-      if(best.mine===1){                             // through a parent of mine
-        if(best.theirs===1){                         // a sibling
-          q.cls='sib';
-          var theirParents=parentsOf(id);
-          var shared=myParents.filter(function(f){ return theirParents.indexOf(f)>-1; });
-          if(shared.length>=2 && myParents.length>=2) q.blood='full';
-          else if(myParents.length<2 || theirParents.length<2){
-            // only one parent is modelled, so half vs full is unknowable —
-            // assume full rather than silently halving somebody's share
-            q.blood='full';
-          }
-          else if(shared.length===1){
-            var sp=null; P.forEach(function(z){ if(z.id===shared[0]) sp=z; });
-            // same mother -> 'm', same father -> 'p'; fall back to link order
-            q.blood = sp && sp.sex==='f' ? 'm'
-                    : sp && sp.sex==='m' ? 'p'
-                    : (myParents[0]===shared[0] ? 'm' : 'p');
-          } else q.blood='full';
-        } else {                                     // niece/nephew and below
-          q.cls='sibdesc';
-          var c=id, ph=parentsOf(c);
-          while(ph.length && !(parentsOf(ph[0]).indexOf(myParents[0])>-1 || myParents.indexOf(parentsOf(ph[0])[0])>-1) && theirUp[ph[0]]!==undefined && theirUp[ph[0]]<best.theirs-1){ c=ph[0]; ph=parentsOf(c); }
-          var sib=id, hops=theirUp[id];
-          while(hops>1){ var pp2=parentsOf(sib); if(!pp2.length) break; sib=pp2[0]; hops--; }
-          q.repOf=sib;
-        }
-      } else {
-        q.cls='coll';                                // uncles, cousins, beyond
-      }
-    });
-  }
-  function rebuildGens(){
-    var g=generationIndex(), base=g['__DEC__']||0;
-    var LABELS={'-3':'Great-grandparents','-2':'Grandparents','-1':'Parents \u00b7 aunts & uncles',
-                '0':"Decedent's generation",'1':'Children \u00b7 nieces \u00b7 cousins',
-                '2':'Grandchildren','3':'Great-grandchildren'};
-    var byOff={};
-    P.forEach(function(q){
-      var off=(g[q.id]===undefined?base:g[q.id])-base;
-      if(off<-3) off=-3; if(off>3) off=3;
-      (byOff[off]=byOff[off]||[]).push(q.id);
-    });
-    var offs=Object.keys(byOff).map(Number);
-    if(offs.indexOf(0)<0) offs.push(0);
-    offs.sort(function(a,b){return a-b;});
-    GENS=offs.map(function(off,i){
-      return {y:14+i*72, lab:LABELS[String(off)]||(off<0?'Ascendants':'Descendants'),
-              ids:(byOff[off]||[]), dec:off===0};
-    });
-  }
-  function makeDecedent(newId){
-    if(newId==='__DEC__') return;
-    var np=null; P.forEach(function(q){ if(q.id===newId) np=q; });
-    if(!np) return;
-    var wasSpouse = np.cls==='spouse';
-    // 1. the outgoing decedent becomes a real person on the tree
-    var oldId=uid('Prior decedent');
-    P.push({id:oldId, label:'Prior decedent', tier:np.tier, cls:'none', deg:99});
-    st[oldId]=0;
-    LINKS.forEach(function(L){
-      L.f=L.f.map(function(x){ return x==='__DEC__'?oldId:x; });
-      L.t=L.t.map(function(x){ return x==='__DEC__'?oldId:x; });
-    });
-    GENS.forEach(function(gg){ gg.ids=gg.ids.map(function(x){ return x==='__DEC__'?oldId:x; }); });
-    P.forEach(function(q){ if(q.repOf==='__DEC__') q.repOf=oldId; });
-    // 2. the chosen person becomes the decedent marker
-    P=P.filter(function(q){ return q.id!==newId; });
-    LINKS.forEach(function(L){
-      L.f=L.f.map(function(x){ return x===newId?'__DEC__':x; });
-      L.t=L.t.map(function(x){ return x===newId?'__DEC__':x; });
-    });
-    GENS.forEach(function(gg){ gg.ids=gg.ids.filter(function(x){ return x!==newId; }); });
-    P.forEach(function(q){ if(q.repOf===newId) q.repOf='__DEC__'; });
-    delete st[newId];
-    // 3. re-derive every relationship from the new root, then relayout
-    recomputeRelations();
-    // a marriage is not a blood link, so it only survives if we swapped spouses
-    P.forEach(function(q){
-      if(q.id!==oldId) return;
-      q.label = wasSpouse ? 'Widow(er)' : 'Prior decedent';
-      // recomputeRelations() has already derived the blood tie (the outgoing
-      // decedent is usually the new one's parent). Only override when the two
-      // were married, since a marriage is not in the parent graph.
-      if(wasSpouse){ q.cls='spouse'; q.deg=0; }
-    });
-    rebuildGens();
-    cur=null; if(quiz) revealed=false; render();
-    setTimeout(function(){
-      var gEl=document.querySelector('#diagbox g.pn[data-p="'+oldId+'"]');
-      var r=gEl?gEl.getBoundingClientRect():null;
-      openEditor(oldId, r?r.left+r.width/2:window.innerWidth/2, r?r.bottom:120);
-    },80);
   }
 
   // A read-only window on the live state, so the derived relationships can be
   // checked from outside instead of inferred from what the page happens to draw.
   window.__l715={ dump:function(){ return P.map(function(q){
-      return {id:q.id,label:q.label,cls:q.cls,deg:q.deg,blood:q.blood,repOf:q.repOf,sex:q.sex,st:st[q.id]};});},
+      return {id:q.id,label:q.label,role:q.role,cls:q.cls,deg:q.deg,blood:q.blood,repOf:q.repOf,sex:q.sex,st:st[q.id]};});},
     links:function(){return JSON.parse(JSON.stringify(LINKS));} };
 
   // ---------------- render ----------------
@@ -1879,7 +1791,8 @@
         var b=document.createElement('button');
         b.className='p'; b.setAttribute('data-s', st[p.id]);
         var sub;
-        if(st[p.id]===0){ sub='<span class="tag">'+(p.tag||'alive')+'</span>'; }
+        var roleBit = p.role ? p.role+' · ' : '';
+        if(st[p.id]===0){ sub='<span class="tag">'+roleBit+(p.tag||'alive')+'</span>'; }
         else if(st[p.id]===1){ sub='<span class="tag">died BEFORE <span class="flip" data-f="'+p.id+'">&rarr; after</span></span>'; }
         else { sub='<span class="tag">died AFTER <span class="flip" data-f="'+p.id+'">&rarr; before</span></span>'; }
         b.innerHTML=p.label+sub+'<span class="rm" data-r="'+p.id+'" title="remove '+p.label+' from the tree">&#10005;</span>';
@@ -1926,7 +1839,7 @@
     var r2=compute();
     document.getElementById('verdict').innerHTML=r2.verdict;
     document.getElementById('takers').innerHTML = r2.takers.length
-      ? r2.takers.map(function(x){return '<div class="take '+(x.cls||'')+'"><b>'+x.who+'</b> — '+x.what+
+      ? r2.takers.map(function(x){return '<div class="take '+(x.cls||'')+'" data-who="'+esc(String(x.who).replace(/\s*\(.*$/,''))+'"><b>'+x.who+'</b> — '+x.what+
           '<span class="art">art. '+x.art+'</span></div>';}).join('')
       : '<div class="take" style="background:var(--code);border-left-color:var(--rule)"><i>Nobody takes on these facts.</i></div>';
     document.getElementById('steps').innerHTML=r2.steps.map(function(s){
@@ -2501,5 +2414,30 @@
 })();
 </script>
 <!-- STUDYKIT:END -->
+
+<script>
+/* Hovering a name anywhere — the answer panel or the ladder — lights that
+   person up in the tree. With twenty boxes on screen, "which one is A-2?" is a
+   real question, and pointing is faster than reading. */
+(function(){
+  function boxesFor(name){
+    var out=[];
+    document.querySelectorAll('#diagbox g.pn').forEach(function(g){
+      var ts=[].map.call(g.querySelectorAll('text'),function(t){return t.textContent;});
+      if(ts.indexOf(name)>-1) out.push(g);
+    });
+    return out;
+  }
+  function clear(){ document.querySelectorAll('#diagbox g.pn.glow').forEach(function(g){ g.classList.remove('glow'); }); }
+  document.addEventListener('mouseover',function(e){
+    var el=e.target.closest && e.target.closest('[data-who]');
+    if(!el){ return; }
+    clear(); boxesFor(el.getAttribute('data-who')).forEach(function(g){ g.classList.add('glow'); });
+  });
+  document.addEventListener('mouseout',function(e){
+    if(e.target.closest && e.target.closest('[data-who]')) clear();
+  });
+})();
+</script>
 </body>
 </html>
