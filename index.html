@@ -239,7 +239,25 @@
   .topbar{position:sticky;top:0;z-index:100;display:flex;flex-wrap:wrap;gap:8px;
     align-items:center;padding:8px 0;margin:0 0 10px;background:var(--bg);
     border-bottom:1px solid var(--rule)}
-  .topbar .t{font:700 14px ui-sans-serif,system-ui;letter-spacing:.01em}
+
+  /* masthead — this is the first thing anyone sees, including the professor */
+  .brand{display:flex;align-items:center;gap:9px;min-width:0}
+  .brand .bmark{font-size:17px;color:var(--accent);line-height:1;
+    filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 45%,transparent))}
+  .brand .btxt{display:flex;flex-direction:column;min-width:0;line-height:1.05}
+  .brand .bt1{font:800 21px/1 ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    letter-spacing:.14em;color:var(--ink);white-space:nowrap;
+    background:linear-gradient(93deg,var(--ink) 30%,var(--accent) 130%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .brand .bt2{font:600 9.5px/1.35 ui-sans-serif,system-ui,sans-serif;letter-spacing:.055em;
+    text-transform:uppercase;color:var(--muted);margin-top:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar{padding:9px 0 10px}
+  @media(max-width:900px){
+    .brand .bt1{font-size:17px;letter-spacing:.1em}
+    .brand .bt2{white-space:normal;font-size:9px}
+  }
+  @media print{ .brand .bt1{-webkit-text-fill-color:#000;color:#000} }
   .topbar .sp{flex:1 1 auto}
   .topbar button{font:700 13px ui-sans-serif,system-ui;padding:9px 13px;border-radius:9px;
     border:1.5px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
@@ -471,7 +489,13 @@
 <button id="drawerClose" title="Close the controls">&#10005;</button>
 <div class="topbar">
   <button class="ctl" id="ctlBtn">&#9776; Facts &amp; options</button>
-  <span class="t">Devolution &middot; <span style="font-weight:500;opacity:.75">Prof. Hernandez &middot; L715</span></span>
+  <div class="brand">
+    <span class="bmark">&#9670;</span>
+    <span class="btxt">
+      <span class="bt1">DEVOLUTION</span>
+      <span class="bt2">Louisiana Successions &amp; Donations &middot; Prof. Milton &ldquo;MJ&rdquo; Hernandez &middot; LCIV&#8209;L715</span>
+    </span>
+  </div>
   <span class="sp"></span>
   <button id="focusBtn" title="Switch between the full-screen diagram and the full page">Full page</button>
   <button class="go" id="pdfFab" title="Print, or Save as PDF">Save PDF</button>
