@@ -1574,6 +1574,7 @@
       items.push({sep:1});
     }
     items.push(row('&#43; Add child of this person', function(){ addChildOf(id); }, 'act'));
+    if(!isDec) items.push(row('&#9733; Make this person the decedent', function(){ makeDecedent(id); }, 'act'));
     if(!isDec){
       items.push(row('&#9998; Rename / edit\u2026', function(){ openEditor(id,x,y); }, 'act'));
       items.push({sep:1});
@@ -1591,7 +1592,7 @@
       var b=btns[bi++];
       b.onclick=function(ev){
         ev.stopPropagation(); closeMenu();
-        var deferred = /Add child|Rename|Remove/.test(b.textContent);
+        var deferred = /Add child|Rename|Remove|decedent/.test(b.textContent);
         it.fn();
         if(!deferred){ cur=null; if(quiz) revealed=false; render(); }
       };
@@ -1680,6 +1681,186 @@
       '</div>';
     el.innerHTML=html;
   }
+
+
+  // ---------------- RE-ROOT: make anyone the decedent (2026-08-31) ----------
+  // Every relationship field (cls, deg, blood, repOf) is stored RELATIVE to the
+  // decedent, so swapping the decedent is not a flag flip — it is a
+  // re-derivation of the whole graph. We do derive it: the parent links are the
+  // ground truth, and civil-law degree IS path length (up to the common
+  // ancestor and back down). Nothing here is guessed from the old fields.
+  function parentsOf(id){
+    var out=[]; LINKS.forEach(function(L){ if(L.t.indexOf(id)>-1) L.f.forEach(function(f){ if(out.indexOf(f)<0) out.push(f); }); });
+    return out;
+  }
+  function childrenOf(id){
+    var out=[]; LINKS.forEach(function(L){ if(L.f.indexOf(id)>-1) L.t.forEach(function(t){ if(out.indexOf(t)<0) out.push(t); }); });
+    return out;
+  }
+  function ancestorDist(id){                 // ancestor id -> generations up
+    var seen={}, q=[[id,0]];
+    while(q.length){
+      var cur=q.shift(), who=cur[0], d=cur[1];
+      parentsOf(who).forEach(function(f){
+        if(seen[f]===undefined || d+1<seen[f]){ seen[f]=d+1; q.push([f,d+1]); }
+      });
+    }
+    return seen;
+  }
+  function descendantDist(id){               // descendant id -> generations down
+    var seen={}, q=[[id,0]];
+    while(q.length){
+      var cur=q.shift(), who=cur[0], d=cur[1];
+      childrenOf(who).forEach(function(t){
+        if(seen[t]===undefined || d+1<seen[t]){ seen[t]=d+1; q.push([t,d+1]); }
+      });
+    }
+    return seen;
+  }
+  function generationIndex(){                // absolute depth, for laying out rows
+    var g={}, guard=0;
+    P.concat([{id:'__DEC__'}]).forEach(function(q){ g[q.id]=0; });
+    var changed=true;
+    while(changed && guard++<40){
+      changed=false;
+      Object.keys(g).forEach(function(id){
+        var pr=parentsOf(id);
+        if(!pr.length) return;
+        var mx=-1; pr.forEach(function(f){ if(g[f]!==undefined && g[f]>mx) mx=g[f]; });
+        if(mx>=0 && g[id]!==mx+1){ g[id]=mx+1; changed=true; }
+      });
+    }
+    return g;
+  }
+  function recomputeRelations(){
+    var up=ancestorDist('__DEC__'), down=descendantDist('__DEC__');
+    var myParents=parentsOf('__DEC__');
+    P.forEach(function(q){
+      var id=q.id;
+      delete q.repOf; q.blood=undefined; q.line=undefined;
+      if(down[id]!==undefined){                      // my descendant
+        q.deg=down[id];
+        q.cls = down[id]===1 ? 'desc' : 'gk';
+        if(down[id]>1){                              // takes through my child
+          var cur=id, hop=parentsOf(cur);
+          while(hop.length && down[hop[0]]!==undefined && down[hop[0]]>1){ cur=hop[0]; hop=parentsOf(cur); }
+          if(hop.length) q.repOf=hop[0];
+        }
+        return;
+      }
+      if(up[id]!==undefined){                        // my ancestor
+        q.deg=up[id];
+        q.cls = up[id]===1 ? 'parent' : 'asc';
+        return;
+      }
+      // collateral: find the nearest ancestor of mine that is also above them
+      var theirUp=ancestorDist(id), best=null;
+      Object.keys(up).forEach(function(a){
+        if(theirUp[a]===undefined) return;
+        var d=up[a]+theirUp[a];
+        if(!best || d<best.d) best={a:a,d:d,mine:up[a],theirs:theirUp[a]};
+      });
+      if(!best){ q.cls='none'; q.deg=99; return; }   // no blood tie at all
+      q.deg=best.d;
+      if(best.mine===1){                             // through a parent of mine
+        if(best.theirs===1){                         // a sibling
+          q.cls='sib';
+          var theirParents=parentsOf(id);
+          var shared=myParents.filter(function(f){ return theirParents.indexOf(f)>-1; });
+          if(shared.length>=2 && myParents.length>=2) q.blood='full';
+          else if(myParents.length<2 || theirParents.length<2){
+            // only one parent is modelled, so half vs full is unknowable —
+            // assume full rather than silently halving somebody's share
+            q.blood='full';
+          }
+          else if(shared.length===1){
+            var sp=null; P.forEach(function(z){ if(z.id===shared[0]) sp=z; });
+            // same mother -> 'm', same father -> 'p'; fall back to link order
+            q.blood = sp && sp.sex==='f' ? 'm'
+                    : sp && sp.sex==='m' ? 'p'
+                    : (myParents[0]===shared[0] ? 'm' : 'p');
+          } else q.blood='full';
+        } else {                                     // niece/nephew and below
+          q.cls='sibdesc';
+          var c=id, ph=parentsOf(c);
+          while(ph.length && !(parentsOf(ph[0]).indexOf(myParents[0])>-1 || myParents.indexOf(parentsOf(ph[0])[0])>-1) && theirUp[ph[0]]!==undefined && theirUp[ph[0]]<best.theirs-1){ c=ph[0]; ph=parentsOf(c); }
+          var sib=id, hops=theirUp[id];
+          while(hops>1){ var pp2=parentsOf(sib); if(!pp2.length) break; sib=pp2[0]; hops--; }
+          q.repOf=sib;
+        }
+      } else {
+        q.cls='coll';                                // uncles, cousins, beyond
+      }
+    });
+  }
+  function rebuildGens(){
+    var g=generationIndex(), base=g['__DEC__']||0;
+    var LABELS={'-3':'Great-grandparents','-2':'Grandparents','-1':'Parents \u00b7 aunts & uncles',
+                '0':"Decedent's generation",'1':'Children \u00b7 nieces \u00b7 cousins',
+                '2':'Grandchildren','3':'Great-grandchildren'};
+    var byOff={};
+    P.forEach(function(q){
+      var off=(g[q.id]===undefined?base:g[q.id])-base;
+      if(off<-3) off=-3; if(off>3) off=3;
+      (byOff[off]=byOff[off]||[]).push(q.id);
+    });
+    var offs=Object.keys(byOff).map(Number);
+    if(offs.indexOf(0)<0) offs.push(0);
+    offs.sort(function(a,b){return a-b;});
+    GENS=offs.map(function(off,i){
+      return {y:14+i*72, lab:LABELS[String(off)]||(off<0?'Ascendants':'Descendants'),
+              ids:(byOff[off]||[]), dec:off===0};
+    });
+  }
+  function makeDecedent(newId){
+    if(newId==='__DEC__') return;
+    var np=null; P.forEach(function(q){ if(q.id===newId) np=q; });
+    if(!np) return;
+    var wasSpouse = np.cls==='spouse';
+    // 1. the outgoing decedent becomes a real person on the tree
+    var oldId=uid('Prior decedent');
+    P.push({id:oldId, label:'Prior decedent', tier:np.tier, cls:'none', deg:99});
+    st[oldId]=0;
+    LINKS.forEach(function(L){
+      L.f=L.f.map(function(x){ return x==='__DEC__'?oldId:x; });
+      L.t=L.t.map(function(x){ return x==='__DEC__'?oldId:x; });
+    });
+    GENS.forEach(function(gg){ gg.ids=gg.ids.map(function(x){ return x==='__DEC__'?oldId:x; }); });
+    P.forEach(function(q){ if(q.repOf==='__DEC__') q.repOf=oldId; });
+    // 2. the chosen person becomes the decedent marker
+    P=P.filter(function(q){ return q.id!==newId; });
+    LINKS.forEach(function(L){
+      L.f=L.f.map(function(x){ return x===newId?'__DEC__':x; });
+      L.t=L.t.map(function(x){ return x===newId?'__DEC__':x; });
+    });
+    GENS.forEach(function(gg){ gg.ids=gg.ids.filter(function(x){ return x!==newId; }); });
+    P.forEach(function(q){ if(q.repOf===newId) q.repOf='__DEC__'; });
+    delete st[newId];
+    // 3. re-derive every relationship from the new root, then relayout
+    recomputeRelations();
+    // a marriage is not a blood link, so it only survives if we swapped spouses
+    P.forEach(function(q){
+      if(q.id!==oldId) return;
+      q.label = wasSpouse ? 'Widow(er)' : 'Prior decedent';
+      // recomputeRelations() has already derived the blood tie (the outgoing
+      // decedent is usually the new one's parent). Only override when the two
+      // were married, since a marriage is not in the parent graph.
+      if(wasSpouse){ q.cls='spouse'; q.deg=0; }
+    });
+    rebuildGens();
+    cur=null; if(quiz) revealed=false; render();
+    setTimeout(function(){
+      var gEl=document.querySelector('#diagbox g.pn[data-p="'+oldId+'"]');
+      var r=gEl?gEl.getBoundingClientRect():null;
+      openEditor(oldId, r?r.left+r.width/2:window.innerWidth/2, r?r.bottom:120);
+    },80);
+  }
+
+  // A read-only window on the live state, so the derived relationships can be
+  // checked from outside instead of inferred from what the page happens to draw.
+  window.__l715={ dump:function(){ return P.map(function(q){
+      return {id:q.id,label:q.label,cls:q.cls,deg:q.deg,blood:q.blood,repOf:q.repOf,sex:q.sex,st:st[q.id]};});},
+    links:function(){return JSON.parse(JSON.stringify(LINKS));} };
 
   // ---------------- render ----------------
   function render(){
