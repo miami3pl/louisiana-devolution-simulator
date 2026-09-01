@@ -1,0 +1,2190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devolution Simulator — L715</title>
+<style>
+  :root{
+    --bg:#faf8f4;--panel:#fff;--ink:#14110d;--muted:#6b6255;--rule:#e2dbcd;
+    --accent:#8c2d19;--accent2:#1f4d3f;--code:#f3efe6;--flag:#fff4d6;--flagline:#d9a520;
+    --alive:#1f4d3f;--before:#8c2d19;--after:#33478c;--dead:#b9b1a2;
+    --takes:#e7f2ec;--takesline:#1f4d3f;--uf:#eaf0fa;--ufline:#33478c;
+    --rep:#fdeeea;--repline:#8c2d19;--tr:#eef1f8;--trline:#33478c;--lesson:#f0ecf8;--lessonline:#6b4c9a;
+  }
+  @media(prefers-color-scheme:dark){:root:not([data-theme=light]){
+    --bg:#14120f;--panel:#1c1a16;--ink:#f0ece4;--muted:#a49c8c;--rule:#332f27;
+    --accent:#e8846a;--accent2:#7fc4a8;--code:#232019;--flag:#2c2413;--flagline:#c99a1e;
+    --alive:#7fc4a8;--before:#e8846a;--after:#8ea2dd;--dead:#4a443a;
+    --takes:#17251f;--takesline:#7fc4a8;--uf:#1a1e2b;--ufline:#8ea2dd;
+    --rep:#2b1815;--repline:#e8846a;--tr:#1a1e2b;--trline:#8ea2dd;--lesson:#211b2b;--lessonline:#a98fd6;}}
+  :root[data-theme=dark]{
+    --bg:#14120f;--panel:#1c1a16;--ink:#f0ece4;--muted:#a49c8c;--rule:#332f27;
+    --accent:#e8846a;--accent2:#7fc4a8;--code:#232019;--flag:#2c2413;--flagline:#c99a1e;
+    --alive:#7fc4a8;--before:#e8846a;--after:#8ea2dd;--dead:#4a443a;
+    --takes:#17251f;--takesline:#7fc4a8;--uf:#1a1e2b;--ufline:#8ea2dd;
+    --rep:#2b1815;--repline:#e8846a;--tr:#1a1e2b;--trline:#8ea2dd;--lesson:#211b2b;--lessonline:#a98fd6;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 "Charter","Iowan Old Style",Georgia,serif}
+  .wrap{max-width:1220px;margin:0 auto;padding:22px 20px 90px}
+  header.top{border-bottom:4px solid var(--accent);padding-bottom:11px;margin-bottom:14px}
+  .kicker{font:600 12px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:clamp(28px,4.6vw,42px);line-height:1.04;margin:.14em 0 .1em;letter-spacing:-.02em}
+  .sub{color:var(--muted);font:400 15.5px/1.45 ui-sans-serif,system-ui,sans-serif}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 0;
+    font:600 13px/1.4 ui-sans-serif,system-ui,sans-serif}
+  .lg{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block}
+
+  .cols{display:grid;gap:20px;grid-template-columns:minmax(380px,1.15fr) minmax(330px,1fr);align-items:start}
+  @media(max-width:980px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:15px 17px;margin-bottom:14px}
+  .card h3{margin:0 0 .55em;font:700 12.5px/1.3 ui-sans-serif,system-ui,sans-serif;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--accent2)}
+
+  /* tree */
+  .tier{margin:0 0 9px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
+  .tier:last-child{border-bottom:0;padding-bottom:0}
+  .tlab{font:600 10px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .row{display:flex;flex-wrap:wrap;gap:6px}
+  button.p{font:600 13.5px/1.15 ui-sans-serif,system-ui,sans-serif;padding:7px 10px;cursor:pointer;
+    border:2px solid var(--rule);border-radius:9px;background:var(--panel);color:var(--dead);
+    text-align:left;transition:.12s;min-width:98px}
+  button.p .tag{display:block;font:400 9px/1.25 ui-sans-serif,system-ui,sans-serif;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--muted);margin-top:2px}
+  button.p[data-s="0"]{color:var(--ink);border-color:var(--alive);box-shadow:inset 0 -3px 0 var(--alive)}
+  button.p[data-s="1"]{color:var(--before);border-color:var(--before);
+    background:var(--rep);box-shadow:inset 0 -3px 0 var(--before)}
+  button.p[data-s="2"]{color:var(--after);border-color:var(--after);
+    background:var(--tr);box-shadow:inset 0 -3px 0 var(--after)}
+  button.p:hover{filter:brightness(.97)}
+  button.p .flip{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:9px;
+    border:1px solid currentColor;font-size:8.5px;letter-spacing:.04em;opacity:.85}
+  button.p .flip:hover{opacity:1;background:currentColor;color:var(--panel)}
+  button.p[data-s="1"] .tag{color:var(--before)}
+  button.p[data-s="2"] .tag{color:var(--after)}
+  .dec{display:inline-block;padding:7px 12px;border:2px solid var(--accent);border-radius:9px;
+    font:700 13.5px/1.15 ui-sans-serif,system-ui,sans-serif;color:var(--accent);background:var(--code)}
+
+  .opts{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0 0}
+  button.seg{font:600 13px/1 ui-sans-serif,system-ui,sans-serif;padding:8px 11px;cursor:pointer;
+    border:2px solid var(--rule);border-radius:8px;background:var(--panel);color:var(--muted)}
+  button.seg.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .hint{font:400 12.5px/1.45 ui-sans-serif,system-ui,sans-serif;color:var(--muted);margin:.6em 0 0}
+
+  .scengrid{display:grid;gap:4px}
+  button.sc{font:600 13px/1.3 ui-sans-serif,system-ui,sans-serif;padding:7px 10px;cursor:pointer;text-align:left;
+    border:1px solid var(--rule);border-radius:8px;background:var(--panel);color:var(--ink)}
+  button.sc:hover{border-color:var(--accent)}
+  button.sc.on{border-color:var(--accent);background:var(--code)}
+  button.sc .n{display:block;font:400 11px/1.3 ui-sans-serif,system-ui,sans-serif;color:var(--muted);margin-top:2px}
+
+  .res{background:var(--panel);border:2px solid var(--accent);border-radius:12px;padding:15px 17px;
+       position:sticky;top:14px}
+  @media(max-width:980px){.res{position:static}}
+
+  .dwrap{display:flex;gap:14px;align-items:flex-start}
+  .dwrap #diagbox{flex:1 1 auto;min-width:0}
+  #ladder{flex:0 0 300px;width:300px;align-self:stretch;overflow:auto;
+    border-left:1px solid var(--rule);padding-left:12px;max-height:calc(100vh - 210px)}
+  #ladder .lh{font:700 10px ui-sans-serif,system-ui;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 8px}
+  #ladder .lr{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border-radius:8px;
+    margin:0 0 5px;border-left:3px solid var(--rule);background:transparent;opacity:.5}
+  #ladder .lr.reached{opacity:1;border-left-color:var(--muted)}
+  #ladder .lr.hit{opacity:1;border-left-color:var(--accent);background:var(--takes)}
+  #ladder .la{font:700 10.5px/1.5 ui-monospace,Menlo,monospace;color:var(--accent);white-space:nowrap}
+  #ladder .lr:not(.hit) .la{color:var(--muted)}
+  #ladder .lt{font:500 12.5px/1.4 ui-sans-serif,system-ui;color:var(--ink)}
+  #ladder .lr:not(.reached) .lt{color:var(--muted)}
+  #ladder .stop{display:block;font:700 10.5px ui-sans-serif,system-ui;color:var(--accent);
+    margin-top:3px;letter-spacing:.04em}
+  #ladder .empty{font:400 10.5px ui-sans-serif,system-ui;color:var(--muted);font-style:italic}
+  @media(max-width:1100px){ .dwrap{display:block} #ladder{width:auto;border-left:0;padding-left:0;
+    border-top:1px solid var(--rule);padding-top:10px;margin-top:10px;max-height:none} }
+  @media print{ #ladder{max-height:none;overflow:visible} }
+  .pedit{position:fixed;z-index:120;width:270px;background:var(--panel);
+    border:2px solid var(--accent);border-radius:12px;padding:12px 13px;
+    box-shadow:0 18px 44px -16px rgba(0,0,0,.55);
+    font:600 13px ui-sans-serif,system-ui,sans-serif;color:var(--ink)}
+  .pedit .ph{font:700 11px ui-sans-serif,system-ui;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 9px}
+  .pedit label{display:block;font:600 10.5px ui-sans-serif,system-ui;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  .pedit input,.pedit select{display:block;width:100%;margin-top:3px;padding:7px 8px;
+    font:600 13px ui-sans-serif,system-ui;border:1px solid var(--rule);border-radius:7px;
+    background:var(--bg);color:var(--ink);text-transform:none;letter-spacing:0}
+  .pedit .pb{display:flex;gap:6px;margin-top:11px}
+  .pedit .pb button{flex:1;padding:8px 6px;border-radius:7px;border:0;cursor:pointer;
+    font:700 12px ui-sans-serif,system-ui;background:#1f7a4d;color:#fff}
+  .pedit .pb .rm2{background:#8c2d19}
+  .pedit .pb .cx{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+  @media print{ .pedit{display:none!important} }
+
+  .pmenu{position:fixed;z-index:130;min-width:236px;background:var(--panel);
+    border:1.5px solid var(--rule);border-radius:11px;padding:6px;
+    box-shadow:0 20px 48px -14px rgba(0,0,0,.55);font:600 13px ui-sans-serif,system-ui,sans-serif}
+  .pmenu .mh{font:700 10px ui-sans-serif,system-ui;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--accent);padding:6px 9px 7px}
+  .pmenu .ms{height:1px;background:var(--rule);margin:5px 4px}
+  .pmenu button.mi{display:block;width:100%;text-align:left;padding:8px 10px;border:0;
+    border-radius:7px;background:transparent;color:var(--ink);cursor:pointer;
+    font:600 13px ui-sans-serif,system-ui}
+  .pmenu button.mi:hover{background:var(--code)}
+  .pmenu button.mi.on{color:var(--accent2);background:var(--takes)}
+  .pmenu button.mi.act{color:var(--accent2)}
+  .pmenu button.mi.danger{color:#8c2d19}
+  .pmenu button.mi.danger:hover{background:#8c2d19;color:#fff}
+  @media print{ .pmenu{display:none!important} }
+
+  /* ---------- FOCUS MODE (2026-08-31) ----------
+     The diagram IS the page. Controls live in a drawer you pull open, because
+     you set the facts occasionally and read the tree constantly. */
+  body.focus header{display:none}
+  body.focus .quizbar{padding-top:0}
+  body.focus .cols{display:block}
+  body.focus #ctlcol{
+    position:fixed;left:0;top:0;width:min(430px,88vw);height:100vh;z-index:90;
+    background:var(--panel);border-right:2px solid var(--rule);
+    overflow:auto;padding:56px 16px 24px;
+    transform:translateX(-102%);transition:transform .22s ease;
+    box-shadow:12px 0 34px -18px rgba(0,0,0,.5)}
+  body.focus.drawer #ctlcol{transform:none}
+  body.focus #scrim{position:fixed;inset:0;background:rgba(0,0,0,.34);z-index:85;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  body.focus.drawer #scrim{opacity:1;pointer-events:auto}
+  #drawerClose{position:fixed;left:min(430px,88vw);top:10px;z-index:95;display:none;
+    border:0;background:var(--accent);color:#fff;font:700 15px ui-sans-serif,system-ui;
+    padding:8px 12px;border-radius:0 9px 9px 0;cursor:pointer}
+  body.focus.drawer #drawerClose{display:block}
+
+  body.focus .diag.pin > h3{margin:0 0 6px;font-size:11px}
+  body.focus .diag.pin{position:static;max-height:none;margin:0 0 12px;padding:10px 14px;
+    min-height:calc(100vh - 200px);display:flex;flex-direction:column}
+  body.focus .diag.pin #diagbox{flex:1;display:flex;align-items:center}
+  body.focus .diag.pin #diagbox svg{width:100%;height:auto}
+
+  .topbar{position:sticky;top:0;z-index:70;display:flex;flex-wrap:wrap;gap:8px;
+    align-items:center;padding:8px 0;margin:0 0 10px;background:var(--bg);
+    border-bottom:1px solid var(--rule)}
+  .topbar .t{font:700 14px ui-sans-serif,system-ui;letter-spacing:.01em}
+  .topbar .sp{flex:1 1 auto}
+  .topbar button{font:700 13px ui-sans-serif,system-ui;padding:9px 13px;border-radius:9px;
+    border:1.5px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+  .topbar button.go{background:#1f7a4d;border-color:#1f7a4d;color:#fff}
+  .topbar button.go.alt{background:var(--panel);color:#1f7a4d;border-color:#1f7a4d}
+  .topbar button.ctl{background:var(--accent);border-color:var(--accent);color:#fff}
+  body:not(.focus) .topbar button.ctl{display:none}
+  @media print{ .topbar,#scrim,#drawerClose{display:none!important}
+    body.focus #ctlcol{position:static;transform:none;width:auto;height:auto;
+      border:0;box-shadow:none;padding:0;overflow:visible} }
+
+
+  /* ---------- added 2026-08-31: selectable palettes ----------
+     Each theme redefines the SAME token set the page already uses, so nothing
+     downstream needs to know a theme exists. data-skin on <html> selects. */
+  :root[data-skin=slate]{
+    --bg:#eef1f4;--panel:#fff;--ink:#101418;--muted:#5d6875;--rule:#d3dae1;
+    --accent:#1d4e6b;--accent2:#2f6f5e;--code:#e7ecf1;--flag:#e6f0f7;--flagline:#4d90b8;
+    --alive:#2f6f5e;--before:#a33a2c;--after:#2f5fa8;--dead:#aeb7c0;
+    --takes:#e4f0eb;--takesline:#2f6f5e;--uf:#e7eefa;--ufline:#2f5fa8;
+    --rep:#fbe9e6;--repline:#a33a2c;--tr:#e7eefa;--trline:#2f5fa8;--lesson:#ecebf6;--lessonline:#4f4a99;}
+  :root[data-skin=forest]{
+    --bg:#f2f5ef;--panel:#fff;--ink:#12180f;--muted:#5e6b56;--rule:#d6ded0;
+    --accent:#2f5d2f;--accent2:#7a5c1e;--code:#e9efe4;--flag:#f6f1dd;--flagline:#b08a2a;
+    --alive:#2f5d2f;--before:#9c3b1f;--after:#3a5f8a;--dead:#b3bcab;
+    --takes:#e6f0e2;--takesline:#2f5d2f;--uf:#e8eef6;--ufline:#3a5f8a;
+    --rep:#fbeae3;--repline:#9c3b1f;--tr:#e8eef6;--trline:#3a5f8a;--lesson:#f0eee2;--lessonline:#7a5c1e;}
+  :root[data-skin=plum]{
+    --bg:#f5f1f6;--panel:#fff;--ink:#17101a;--muted:#6b5c72;--rule:#e0d6e3;
+    --accent:#6b2d6b;--accent2:#2f6f6f;--code:#efe8f1;--flag:#f7eefa;--flagline:#a05fa0;
+    --alive:#2f6f6f;--before:#9c2d5c;--after:#4a4fa8;--dead:#bdb2c2;
+    --takes:#e3f0f0;--takesline:#2f6f6f;--uf:#eaeaf8;--ufline:#4a4fa8;
+    --rep:#fae7ef;--repline:#9c2d5c;--tr:#eaeaf8;--trline:#4a4fa8;--lesson:#f1e9f6;--lessonline:#6b2d6b;}
+  :root[data-skin=mono]{
+    --bg:#f6f6f6;--panel:#fff;--ink:#111;--muted:#666;--rule:#d8d8d8;
+    --accent:#000;--accent2:#333;--code:#eee;--flag:#f0f0f0;--flagline:#999;
+    --alive:#222;--before:#000;--after:#555;--dead:#bbb;
+    --takes:#ececec;--takesline:#222;--uf:#f0f0f0;--ufline:#555;
+    --rep:#e8e8e8;--repline:#000;--tr:#f0f0f0;--trline:#555;--lesson:#eee;--lessonline:#333;}
+  :root[data-skin=highcontrast]{
+    --bg:#fff;--panel:#fff;--ink:#000;--muted:#333;--rule:#000;
+    --accent:#a00000;--accent2:#004b00;--code:#f2f2f2;--flag:#fffbc8;--flagline:#000;
+    --alive:#004b00;--before:#a00000;--after:#00308f;--dead:#767676;
+    --takes:#dff0df;--takesline:#004b00;--uf:#dde6fb;--ufline:#00308f;
+    --rep:#fadddd;--repline:#a00000;--tr:#dde6fb;--trline:#00308f;--lesson:#efe7fb;--lessonline:#4b0082;}
+
+  .skins{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0}
+  .skins .lab{font:600 11px ui-sans-serif,system-ui,sans-serif;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--muted);margin-right:2px}
+  .skins button{width:26px;height:26px;border-radius:50%;cursor:pointer;padding:0;
+    border:2px solid var(--rule);box-shadow:inset 0 0 0 2px var(--panel)}
+  .skins button.on{border-color:var(--ink);transform:scale(1.12)}
+  .skins button.mode{width:auto;height:auto;border-radius:8px;padding:5px 10px;
+    font:600 12px ui-sans-serif,system-ui,sans-serif;background:var(--panel);color:var(--ink);
+    box-shadow:none}
+  @media print{ .skins{display:none!important} }
+
+
+  /* ---------- added 2026-08-31: pinned diagram + folding controls ----------
+     The tree is the thing you are actually reading; the controls are what you
+     poke. So the tree stays put and the controls get out of the way. */
+  .diag.pin{position:sticky;top:10px;z-index:5;
+    max-height:calc(100vh - 20px);overflow:auto;
+    box-shadow:0 6px 22px -14px rgba(0,0,0,.45)}
+  .diag.pin #diagbox svg{max-height:none}
+  @media(max-width:980px){ .diag.pin{position:static;max-height:none} }
+  @media print{ .diag.pin{position:static;max-height:none;overflow:visible} }
+
+  details.card{padding:0}
+  details.card > summary{list-style:none;cursor:pointer;padding:13px 15px;
+    display:flex;align-items:center;gap:8px;
+    font:700 11.5px/1.2 ui-sans-serif,system-ui,sans-serif;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  details.card > summary::-webkit-details-marker{display:none}
+  details.card > summary::before{content:"\25B8";font-size:12px;transition:transform .15s;color:var(--accent)}
+  details.card[open] > summary::before{transform:rotate(90deg)}
+  details.card > summary:hover{color:var(--ink)}
+  details.card > .body{padding:0 15px 15px}
+  details.card > summary .cnt{margin-left:auto;font-weight:600;letter-spacing:0;
+    text-transform:none;font-size:11.5px;color:var(--muted);opacity:.8}
+
+
+  /* ---------- added 2026-08-31: export FAB, add/remove people ---------- */
+  .fab{position:fixed;top:14px;right:14px;z-index:60;display:flex;gap:8px}
+  .fab button{font:700 14px/1 ui-sans-serif,system-ui,sans-serif;padding:12px 16px;
+    border-radius:10px;border:2px solid #1f7a4d;background:#1f7a4d;color:#fff;cursor:pointer;
+    box-shadow:0 4px 14px -4px rgba(0,0,0,.45);letter-spacing:.01em}
+  .fab button:hover{background:#186340;border-color:#186340}
+  .fab button:active{transform:translateY(1px)}
+  .fab button.alt{background:#fff;color:#1f7a4d}
+  .fab button.alt:hover{background:#eafaf1}
+  @media(max-width:760px){ .fab{position:static;margin:10px 0 0;justify-content:flex-start}
+    .fab button{padding:10px 13px;font-size:13px} }
+  @media print{ .fab{display:none!important} }
+
+  button.p .rm{margin-left:7px;padding:0 4px;border-radius:4px;font-weight:700;opacity:.4;
+    color:var(--muted);font-size:13px}
+  button.p .rm:hover{opacity:1;background:#8c2d19;color:#fff}
+  button.addp{font:600 13px/1.15 ui-sans-serif,system-ui,sans-serif;padding:7px 11px;cursor:pointer;
+    border:1.5px dashed var(--rule);border-radius:8px;background:transparent;color:var(--muted)}
+  button.addp:hover{border-color:#1f7a4d;color:#1f7a4d}
+  .addform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0;
+    padding:10px;border:1.5px solid #1f7a4d;border-radius:10px;background:var(--code)}
+  .addform input,.addform select{font:600 13px ui-sans-serif,system-ui,sans-serif;padding:7px 9px;
+    border:1px solid var(--rule);border-radius:7px;background:var(--panel);color:var(--ink)}
+  .addform input{min-width:150px}
+  .addform button{font:700 13px ui-sans-serif,system-ui,sans-serif;padding:7px 13px;border-radius:7px;
+    border:0;cursor:pointer;background:#1f7a4d;color:#fff}
+  .addform button.cx{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+  .addform .lab{font:600 11px ui-sans-serif,system-ui,sans-serif;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted)}
+
+
+  /* ---------- print & projection (added 2026-08-31) ----------
+     A professor's first two questions about courseware are "can I project it"
+     and "can students take it home". This makes the answer yes to both:
+     everything interactive disappears, the tree and the reasoning stay, and
+     the colours are forced light so a projector or a printer renders them. */
+  @media print{
+    :root, :root[data-theme=dark], :root:not([data-theme=light]){
+      --bg:#fff!important; --panel:#fff!important; --ink:#111!important;
+      --muted:#444!important; --line:#bbb!important;
+    }
+    body{background:#fff!important;color:#000!important;font-size:11pt}
+    .quizbar,.tabs,.scengrid,.stepbar,.cover,#quizToggle,#reveal,
+    #allAlive,#allDead,#random,.exportbar,.skins{display:none!important}
+    .opts{display:flex!important}  /* the property regime is a FACT — print it */
+    .res{display:block!important}
+    .cols{display:block!important}
+    .card,.diag,.res{break-inside:avoid;page-break-inside:avoid;box-shadow:none!important;border-color:#bbb!important}
+    .diag{page-break-before:auto}
+    h3{color:#000!important}
+    svg{max-width:100%!important;height:auto!important}
+    a[href]:after{content:""}
+    .printonly{display:block!important}
+  }
+  .printonly{display:none}
+  .exportbar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
+  .quizbar{flex-wrap:wrap}
+  #savePngTop,#printAllTop{border-color:var(--accent,#8c2d19)}
+  .exportbar .note{font-size:.78rem;color:var(--muted)}
+
+  .verdict{font:700 18px/1.35 ui-sans-serif,system-ui,sans-serif;color:var(--accent);margin:0 0 .45em}
+  .take{background:var(--takes);border-left:4px solid var(--takesline);border-radius:0 8px 8px 0;
+    padding:9px 12px;margin:6px 0;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}
+  .take b{font-size:16.5px}
+  .take.uf{background:var(--uf);border-left-color:var(--ufline)}
+  .take.rep{background:var(--rep);border-left-color:var(--repline)}
+  .take.tr{background:var(--tr);border-left-color:var(--trline)}
+  .take .art{font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--accent);background:var(--code);
+    padding:2px 6px;border-radius:4px;margin-left:5px;white-space:nowrap}
+  .why{margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)}
+  .why h4{margin:0 0 .35em;font:700 11px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted)}
+  ol.steps{margin:0;padding-left:19px;font:14px/1.5 ui-sans-serif,system-ui,sans-serif}
+  ol.steps li{margin:.28em 0;color:var(--muted)}
+  ol.steps li.hit{color:var(--ink);font-weight:600}
+  ol.steps li .a{font:600 10.5px/1 ui-monospace,Menlo,monospace;color:var(--accent);background:var(--code);
+    padding:2px 5px;border-radius:4px;margin-left:4px}
+  .flag{background:var(--flag);border-left:5px solid var(--flagline);padding:11px 14px;margin:11px 0 0;
+    border-radius:0 8px 8px 0;font:14px/1.5 ui-sans-serif,system-ui,sans-serif}
+  .lesson{background:var(--lesson);border-left:5px solid var(--lessonline);padding:12px 15px;margin:0 0 12px;
+    border-radius:0 8px 8px 0;font:14.5px/1.5 ui-sans-serif,system-ui,sans-serif}
+  .lesson b.k{display:block;font:700 10.5px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--lessonline);margin-bottom:4px}
+  .quizbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:11px}
+  button.big{font:700 14px/1 ui-sans-serif,system-ui,sans-serif;padding:10px 14px;cursor:pointer;
+    border:2px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff}
+  button.big.ghost{background:var(--panel);color:var(--accent)}
+  .hidden{display:none}
+  .cover{text-align:center;padding:22px 14px;color:var(--muted);font:400 15px/1.55 ui-sans-serif,system-ui,sans-serif}
+  .cover b{display:block;color:var(--ink);font-size:17px;margin-bottom:5px}
+  .foot{margin-top:34px;padding-top:12px;border-top:1px solid var(--rule);color:var(--muted);
+    font:400 13px/1.55 ui-sans-serif,system-ui,sans-serif}
+
+  .dfn{font-weight:700;color:var(--accent);border-bottom:2px dotted var(--accent);cursor:help}
+  #tip{position:fixed;z-index:999;max-width:380px;background:var(--panel);color:var(--ink);
+    border:2px solid var(--accent2);border-radius:10px;padding:10px 13px;
+    font:400 14.5px/1.5 ui-sans-serif,system-ui,sans-serif;box-shadow:0 8px 26px rgba(0,0,0,.22);
+    display:none;pointer-events:none}
+  #tip b.h{display:block;font:700 11.5px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+  .diag{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:15px 17px;margin-bottom:14px}
+  .diag h3{margin:0 0 .5em;font:700 12.5px/1.3 ui-sans-serif,system-ui,sans-serif;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--accent2)}
+  .diag svg{width:100%;height:auto;display:block}
+  .tabs{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 11px}
+  button.tab{font:600 12px/1 ui-sans-serif,system-ui,sans-serif;padding:7px 10px;cursor:pointer;
+    border:1px solid var(--rule);border-radius:16px;background:var(--panel);color:var(--muted)}
+  button.tab.on{border-color:var(--accent);background:var(--code);color:var(--accent)}
+  .stepbar{display:flex;gap:7px;align-items:center;margin:10px 0 0}
+  button.stepb{font:700 13px/1 ui-sans-serif,system-ui,sans-serif;padding:8px 13px;cursor:pointer;
+    border:2px solid var(--accent);border-radius:8px;background:var(--panel);color:var(--accent)}
+  button.stepb[disabled]{opacity:.35;cursor:default}
+  .stepn{font:600 12px/1 ui-sans-serif,system-ui,sans-serif;color:var(--muted)}
+  .artq{background:var(--code);border-left:4px solid var(--accent2);border-radius:0 8px 8px 0;
+    padding:10px 13px;margin:9px 0 0;font:400 14.5px/1.5 ui-sans-serif,system-ui,sans-serif}
+  .artq b.n{display:block;font:700 11px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin-bottom:4px}
+  .dcap{font:400 13.5px/1.5 ui-sans-serif,system-ui,sans-serif;color:var(--muted);margin:.6em 0 0}
+  code{font:12.5px ui-monospace,Menlo,monospace;background:var(--code);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">LCIV-L715-001 &middot; Successions &amp; Donations &middot; Hernandez</div>
+  <h1>Devolution Simulator</h1>
+  <div class="sub"><b>Click a person to kill or revive them.</b> Once dead, click the little <b>&rarr; after</b> chip to move the death to <b>after</b> the decedent.<br><b>Before</b> is <b>representation</b>; <b>after</b> is <b>transmission</b>. That one chip is the whole of Chapter 3.</div>
+  <div class="legend">
+    <span class="lg"><span class="sw" style="background:#1f4d3f"></span>alive</span>
+    <span class="lg"><span class="sw" style="background:#8c2d19"></span>died BEFORE → representation, art. 881</span>
+    <span class="lg"><span class="sw" style="background:#33478c"></span>died AFTER → transmission, art. 937</span>
+    <span class="lg"><span class="sw" style="background:#b9b1a2"></span>predeceased with no issue &rarr; simply drops out</span>
+  </div>
+  <div class="skins">
+    <span class="lab">Theme</span>
+    <button data-skin="" title="Default — warm parchment" style="background:#8c2d19"></button>
+    <button data-skin="slate" title="Slate" style="background:#1d4e6b"></button>
+    <button data-skin="forest" title="Forest" style="background:#2f5d2f"></button>
+    <button data-skin="plum" title="Plum" style="background:#6b2d6b"></button>
+    <button data-skin="mono" title="Monochrome — for photocopies" style="background:#111"></button>
+    <button data-skin="highcontrast" title="High contrast — for projection" style="background:#a00000"></button>
+    <button class="mode" id="modeBtn" title="Light / dark / follow system">Auto</button>
+  </div>
+</header>
+
+<div id="scrim"></div>
+<button id="drawerClose" title="Close the controls">&#10005;</button>
+<div class="topbar">
+  <button class="ctl" id="ctlBtn">&#9776; Facts &amp; options</button>
+  <span class="t">Devolution</span>
+  <span class="sp"></span>
+  <button id="focusBtn" title="Switch between the full-screen diagram and the full page">Full page</button>
+  <button class="go" id="pdfFab" title="Print, or Save as PDF">Save PDF</button>
+  <button class="go alt" id="pngFab" title="Save tree + who takes as a PNG">Save PNG</button>
+</div>
+
+<div class="quizbar">
+  <button class="big ghost" id="quizToggle">Quiz me</button>
+  <button class="big ghost hidden" id="reveal">Reveal the answer</button>
+  <button class="big ghost" id="allAlive">Everyone alive</button>
+  <button class="big ghost" id="allDead">Everyone predeceased</button>
+  <button class="big ghost" id="random">Random facts</button>
+  <span class="hint" id="quizmsg" style="margin:0"></span>
+</div>
+
+<div class="cols">
+  <div id="ctlcol">
+    <details class="card">
+      <summary>0 · Which family<span class="cnt" id="modelnow"></span></summary>
+      <div class="body">
+        <div class="tabs" id="models"></div>
+        <p class="hint" id="modelhint"></p>
+      </div>
+    </details>
+    <details class="card">
+      <summary>1 · Start here — pick a scenario</summary>
+      <div class="body"><div class="scengrid" id="scen"></div></div>
+    </details>
+    <details class="card" open>
+      <summary>2 · Then change the facts — click to kill or revive<span class="cnt" id="peoplecnt"></span></summary>
+      <div class="body">
+      <div id="tree"></div>
+      <div class="opts" id="propsel">
+        <button class="seg on" data-prop="separate">Separate property</button>
+        <button class="seg" data-prop="community">Community property</button>
+      </div>
+      <div class="opts hidden" id="willsel">
+        <button class="seg on" data-will="no">Died intestate</button>
+        <button class="seg" data-will="yes">Will: all to the children</button>
+      </div>
+      <p class="hint" id="hint"></p>
+      </div>
+    </details>
+
+
+
+<div class="diag">
+  <h3>Class 5 · who is even <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">on the tree — filiation and adoption</span></h3>
+  <p class="dcap" style="margin-top:0">This calculator assumes everyone shown is filiated. <b>That is the question Class 5 answers</b>, and it decides whether a person belongs on the tree at all — no filiation, no heir.</p>
+
+  <div class="lesson" style="margin-bottom:10px">
+    <b class="k">Adoption cuts one way — art. 199</b>
+    On adoption the adopting parent becomes the parent <b>for all purposes</b> and filiation to the former legal parent is <b>terminated</b> — <b>but</b> "the adopted child and his descendants <b>retain the right to inherit from</b> his former legal parent and the relatives of that parent." It does <b>not</b> run in reverse: the biological parent is cut off.
+    <br><br><b>So an adopted child sits in TWO trees for his own inheritance rights, and in ONE for everybody else's.</b> He inherits <b>up</b> both; only the adoptive side inherits <b>down</b>.
+  </div>
+
+  <div class="lesson" style="margin-bottom:10px">
+    <b class="k">Filiation — arts. 178, 179</b>
+    Filiation is the legal relationship between child and parent, established by proof of <b>maternity</b>, <b>paternity</b>, or <b>adoption</b>. <b>Maternity</b> (art. 184) is a <b>preponderance</b> that the child was born of a particular woman — no blood testing needed. Paternity is where the work is.
+  </div>
+
+  <div class="lesson" style="margin-bottom:10px">
+    <b class="k">Three presumptions of paternity</b>
+    <b>1 · Husband of the mother</b> (art. 185) — the "strongest presumption in Louisiana law"; covers a child born during the marriage or within <b>300 days</b> of its end. Two husbands? Art. 186 picks <b>H1</b>, unless he disavows.<br>
+    <b>2 · Marriage + acknowledgment</b> (art. 195) — marries the mother of a child not filiated to another man and acknowledges by <b>authentic act</b>.<br>
+    <b>3 · Formal acknowledgment</b> (art. 196) — by authentic act; <b>runs in the child's favour only</b>: the acknowledging father cannot inherit from the child or sue for wrongful death.
+  </div>
+
+  <div class="lesson" style="margin-bottom:10px">
+    <b class="k">Three ways to defeat one</b>
+    <b>Disavowal</b> (arts. 187–190) — clear and convincing, corroborated; heritable; <b>prescriptive</b>.<br>
+    <b>Contestation by the mother</b> (arts. 191–193) — needs H2's authentic act and clear and convincing proof; <b>2 years and 180 days, both</b>.<br>
+    <b>Three-party acknowledgment</b> (art. 190.1) — mother, presumed father and biological father sign; needs <b>99.9%</b> probability; 10 years.
+  </div>
+
+  <div class="lesson">
+    <b class="k">Two court actions — and the trap</b>
+    <b>The child's action</b> (art. 197): preponderance if the alleged father lives, <b>clear and convincing if he is dead</b>; any time — <b>except for succession purposes, where it is a one-year peremption from the death</b>.<br>
+    <b>The father's avowal</b> (art. 198): <b>strictly personal, not heritable</b>; one year from birth if the child is presumed another man's; never later than <b>one year from the child's death</b>.<br><br>
+    <b>The pattern worth saying out loud:</b> the only <b>prescriptive</b> periods here are the disavowal ones — the action that <b>destroys</b> a filiation. Everything that <b>creates</b> or redirects one is <b>peremptive</b> and dies on the day. The Code forgives a late attack on paternity more readily than a late claim to it.
+  </div>
+</div>
+
+<div class="diag">
+  <h3>Reference · before or after — the whole of Chapter 3</h3>
+  <svg viewBox="0 0 720 190" role="img" aria-label="Representation versus transmission timeline">
+    <g font-family="ui-sans-serif,system-ui,sans-serif">
+      <line x1="40" y1="95" x2="680" y2="95" stroke="currentColor" stroke-width="2" opacity=".3"/>
+      <circle cx="360" cy="95" r="7" fill="var(--accent)"/>
+      <text x="360" y="120" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent)">DECEDENT DIES</text>
+
+      <rect x="52" y="26" width="250" height="52" rx="9" fill="var(--rep)" stroke="var(--before)" stroke-width="2"/>
+      <text x="177" y="46" font-size="14" font-weight="700" text-anchor="middle" fill="var(--before)">heir dies BEFORE</text>
+      <text x="177" y="66" font-size="13" text-anchor="middle" fill="var(--before)">REPRESENTATION &mdash; arts. 881&ndash;885</text>
+      <line x1="177" y1="78" x2="177" y2="92" stroke="var(--before)" stroke-width="2" marker-end="url(#ar)" color="var(--before)"/>
+
+      <rect x="418" y="26" width="250" height="52" rx="9" fill="var(--tr)" stroke="var(--after)" stroke-width="2"/>
+      <text x="543" y="46" font-size="14" font-weight="700" text-anchor="middle" fill="var(--after)">heir dies AFTER</text>
+      <text x="543" y="66" font-size="13" text-anchor="middle" fill="var(--after)">TRANSMISSION &mdash; art. 937</text>
+      <line x1="543" y1="78" x2="543" y2="92" stroke="var(--after)" stroke-width="2" marker-end="url(#ar)" color="var(--after)"/>
+
+      <text x="177" y="150" font-size="12.5" text-anchor="middle" fill="var(--muted)">nothing ever vested &mdash;</text>
+      <text x="177" y="167" font-size="12.5" text-anchor="middle" fill="var(--muted)">his issue take FROM the decedent</text>
+      <text x="543" y="150" font-size="12.5" text-anchor="middle" fill="var(--muted)">it vested at the instant of death &mdash;</text>
+      <text x="543" y="167" font-size="12.5" text-anchor="middle" fill="var(--muted)">it passes THROUGH his own estate</text>
+    </g>
+  </svg>
+  <p class="dcap"><b>Same family, same shares, opposite routes.</b> Representation is <b>fenced</b> &mdash; descendants and siblings only.
+  Transmission is <b>open to anyone</b>, because nothing is being pretended: the rights really did vest.</p>
+</div>
+  </div>
+
+  <div>
+<div class="diag pin">
+  <h3>3 · The tree that results <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">— redraws on every click</span></h3>
+  <div class="tabs" id="tabs"></div>
+  <div class="dwrap"><div id="diagbox"></div><aside id="ladder"></aside></div>
+  <p class="dcap" id="diagcap"></p>
+  <div class="exportbar">
+    <button class="big ghost" id="savePng">Save this tree as PNG</button>
+    <button class="big ghost" id="printAll">Print / Save as PDF</button>
+    <span class="note">The PNG is the tree exactly as shown, at 2× for projection.</span>
+  </div>
+</div>
+
+    <div id="lessonbox"></div>
+    <div class="res">
+      <div id="cover" class="cover hidden">
+        <b>Your call first.</b>
+        Who takes, in what shares, under which article?<br>Then press <i>Reveal</i>.
+      </div>
+      <div id="answer">
+        <div style="font:700 12.5px/1.3 ui-sans-serif,system-ui,sans-serif;letter-spacing:.11em;text-transform:uppercase;color:var(--accent2);margin-bottom:.5em">4 · Who takes</div>
+        <div class="verdict" id="verdict">—</div>
+        <div id="takers"></div>
+        <div class="why">
+          <h4>5 · Why — the ladder, rung by rung (skipped rungs marked <i>empty</i>)</h4>
+          <ol class="steps" id="steps"></ol>
+        </div>
+        <div id="notes"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <b>Models:</b> intestate devolution &mdash; arts. 888&ndash;896, 902 (separate) and 889&ndash;890 (community);
+  the half-blood line split of art. 893; the parental usufruct of art. 891;
+  <b>representation</b> in the direct line (art. 882) and the collateral line (art. 884), partitioned
+  <b>by roots</b> (art. 885); and <b>transmission</b> (art. 937) where an heir survives the decedent
+  and then dies.<br><br>
+  <b>Not modelled:</b> forced heirship and the legitime; collation; putative spouses; judicial
+  separation as a variable; the art. 1514 security question; and unworthiness (art. 941), though
+  his slide notes the unworthy and those who renounce are <b>treated as if they predeceased</b>.
+  <b>A drill for the ladders &mdash; not an answer key for an exam hypothetical.</b>
+</div>
+
+</div>
+
+<script>
+(function(){
+  // state: 0 alive · 1 died BEFORE decedent (representation) · 2 died AFTER (transmission)
+  var GEN_P=[
+   {id:'gm',   label:'Grandmother', tier:'Grandparents', tag:'maternal', cls:'asc',  deg:2, line:'m'},
+   {id:'gf',   label:'Grandfather', tier:'Grandparents', tag:'paternal', cls:'asc',  deg:2, line:'p'},
+   {id:'mom',  label:'Mother',      tier:'Parents', cls:'parent', deg:1},
+   {id:'dad',  label:'Father',      tier:'Parents', cls:'parent', deg:1},
+   {id:'uncle',label:'Uncle',       tier:'Parents', tag:'3rd degree', cls:'coll', deg:3},
+   {id:'spouse',label:'Spouse',     tier:"Decedent's generation", cls:'spouse'},
+   {id:'sibF1',label:'Sister',      tier:"Decedent's generation", tag:'full blood', cls:'sib', deg:2, blood:'full'},
+   {id:'sibF2',label:'Brother',     tier:"Decedent's generation", tag:'full blood', cls:'sib', deg:2, blood:'full'},
+   {id:'sibM', label:'Half-brother',tier:"Decedent's generation", tag:'same mother', cls:'sib', deg:2, blood:'m'},
+   {id:'sibP', label:'Half-sister', tier:"Decedent's generation", tag:'same father', cls:'sib', deg:2, blood:'p'},
+   {id:'sibP2',label:'Half-bro II', tier:"Decedent's generation", tag:'same father', cls:'sib', deg:2, blood:'p'},
+   {id:'c1',   label:'Child A',     tier:'Children', cls:'desc', deg:1},
+   {id:'c2',   label:'Child B',     tier:'Children', cls:'desc', deg:1},
+   {id:'c3',   label:'Child C',     tier:'Children', cls:'desc', deg:1},
+   {id:'niece',label:'Niece',       tier:'Children', tag:"Sister's daughter", cls:'sibdesc', deg:3, repOf:'sibF1'},
+   {id:'cous', label:'Cousin',      tier:'Children', tag:'4th degree', cls:'coll', deg:4},
+   {id:'a1',   label:'A-1',         tier:'Grandchildren', tag:"Child A's child", cls:'gk', deg:2, repOf:'c1'},
+   {id:'a2',   label:'A-2',         tier:'Grandchildren', tag:"Child A's child", cls:'gk', deg:2, repOf:'c1'},
+   {id:'c3a',  label:'C-1',         tier:'Grandchildren', tag:"Child C's child", cls:'gk', deg:2, repOf:'c3'}
+  ];
+  var P, GENS, LINKS, SCEN;
+  var st={}, prop='separate', will='no', quiz=false, revealed=false, cur=null;
+  // st is populated by useModel() once a family model is loaded
+
+  function A(id){ return st[id]===0; }             // alive
+  function BEF(id){ return st[id]===1; }           // predeceased -> representation
+  function AFT(id){ return st[id]===2; }           // survived then died -> transmission
+  function inPlay(id){ return st[id]===0||st[id]===1||st[id]===2; }
+  function gcd(a,b){ return b?gcd(b,a%b):a; }
+  function frac(n,d){ var k=gcd(n,d)||1,nn=n/k,dd=d/k; return dd===1?String(nn):nn+'/'+dd; }
+  function grp(cls){ return P.filter(function(p){return p.cls===cls && A(p.id);}); }
+  function issueOf(id){ return P.filter(function(p){return p.repOf===id && (A(p.id)||AFT(p.id));}); }
+
+  var GEN_SCEN=[
+   {n:'1 · Three children', s:{c1:0,c2:0,c3:0}, prop:'separate', k:'The baseline',
+    t:'Art. 888 &mdash; equal portions <b>by heads</b>. The ladder stops on rung one.'},
+   {n:'2 · Child A died BEFORE, leaving two children', s:{c1:1,c2:0,c3:0,a1:0,a2:0}, prop:'separate',
+    k:'Representation, direct line', t:'Art. 882 &mdash; representation <b>ad infinitum</b> in the direct line. A-1 and A-2 step into Child A\\u2019s <b>place and degree</b> (art. 881) and split <b>his one-third</b> under art. 885 &mdash; <b>1/6 each, not 1/5</b>. That is <b>by roots</b>.'},
+   {n:'3 · Same, but Child A died AFTER', s:{c1:2,c2:0,c3:0,a1:0,a2:0}, prop:'separate',
+    k:'⭐ Transmission &mdash; the one toggle',
+    t:'Nothing else changed. Child A <b>survived</b> the decedent, so the rights <b>vested in him</b> at the instant of death (art. 935 seizin) and pass to <b>his own successors</b> under art. 937 &mdash; <b>whether or not he accepted, whether or not he knew</b>. The share is identical; <b>the route is completely different</b>.'},
+   {n:'4 · All three children died BEFORE', s:{c1:1,c2:1,c3:1,a1:0,a2:0,c3a:0}, prop:'separate',
+    k:'By roots, with unequal branches',
+    t:'Art. 885 &mdash; partition <b>by roots</b> even when the branches are uneven. Child A\\u2019s root splits between A-1 and A-2; Child C\\u2019s root goes wholly to C-1. Child B\\u2019s root <b>fails</b> for want of issue and is not counted.'},
+   {n:'5 · Parents and siblings', s:{mom:0,dad:0,sibF1:0,sibF2:0}, prop:'separate', k:'The rung-two trap',
+    t:'Art. 891 &mdash; siblings own, <b>subject to a usufruct in the parents</b>, joint and successive.'},
+   {n:'6 · Siblings, no parents', s:{sibF1:0,sibF2:0}, prop:'separate', k:'One fact flips it',
+    t:'Art. 892 &mdash; the same siblings now take in <b>full ownership</b>.'},
+   {n:'7 · ★ His board problem', s:{sibF1:0,sibF2:0,sibM:0,sibP:0,sibP2:0}, prop:'separate',
+    k:'Art. 893 half-blood split',
+    t:'Half to each line; full-blood siblings <b>collect in both</b>. Returns <b>4/24 · 7/24 · 7/24 · 3/24 · 3/24</b>.'},
+   {n:'8 · Dead sister, her daughter lives', s:{sibF2:0,sibF1:1,niece:0}, prop:'separate',
+    k:'Representation, collateral line',
+    t:'Arts. 891&ndash;892 reach the siblings <b>&ldquo;or descendants from them,&rdquo;</b> and art. 884 lets the niece represent. She takes her mother\\u2019s <b>root</b> &mdash; a half, not a third.'},
+   {n:'9 · Niece versus spouse', s:{spouse:0,sibF1:1,niece:0}, prop:'separate', k:'Why that matters',
+    t:'The niece takes <b>everything</b>; the spouse <b>nothing</b>. Representing a sibling puts her on <b>rung two</b>, ahead of the spouse on rung three.'},
+   {n:'10 · ⚠️ Cousin cannot represent', s:{uncle:0,cous:0}, prop:'separate',
+    k:'Aranyosi &mdash; the outer edge',
+    t:'Art. 884 permits representation only for descendants <b>of brothers and sisters</b>. A cousin <b>cannot</b> represent a predeceased uncle, so art. 896 decides it on degree alone: <b>uncle 3rd beats cousin 4th</b>. That is <i>Succession of Aranyosi</i>.'},
+   {n:'11 · Spouse alone', s:{spouse:0}, prop:'separate', k:'Rung three at last',
+    t:'Art. 894 &mdash; and <b>to the exclusion of other ascendants and collaterals</b>.'},
+   {n:'12 · Grandparents, both lines', s:{gm:0,gf:0}, prop:'separate', k:'Art. 895 line split',
+    t:'Equal degree in both lines → <b>half per line</b>, then by heads within each.'},
+   {n:'13 · Spouse + children, community', s:{spouse:0,c1:0,c2:0}, prop:'community', will:'no',
+    k:'The contrast', t:'Spouse takes a <b>usufruct</b> over the decedent\\u2019s half; children hold <b>naked ownership</b>.'},
+   {n:'14 · … and she left a will', s:{spouse:0,c1:0,c2:0}, prop:'community', will:'yes',
+    k:'Richaud and Sylvester', t:'The usufruct <b>vanishes</b>. Art. 890 gives one only <i>to the extent not disposed of by testament</i>.'},
+   {n:'15 · Nobody at all', s:{}, prop:'separate', k:'Art. 902', t:'<b>The State takes.</b>'}
+  ];
+
+
+  // ================= family models =================
+  var MODELS={};
+  MODELS.generic={ name:'Generic family' };  // filled at boot, once the GEN_* blocks below have run
+  MODELS.xavier={ name:'Xavier — Quiz 2',
+    P:[
+      {id:'helga',label:'Helga',   tier:'Grandparents',tag:'paternal grandmother',cls:'asc',deg:2,line:'p'},
+      {id:'ian',  label:'Ian',     tier:'Grandparents',tag:'paternal grandfather',cls:'asc',deg:2,line:'p'},
+      {id:'jason',label:'Jason',   tier:'Grandparents',tag:'maternal grandfather',cls:'asc',deg:2,line:'m'},
+      {id:'kelly',label:'Kelly',   tier:'Grandparents',tag:'maternal grandmother',cls:'asc',deg:2,line:'m'},
+      {id:'anthony',label:'Anthony',tier:'Parents · aunts & uncles',tag:'father',cls:'parent',deg:1},
+      {id:'berta',label:'Berta',   tier:'Parents · aunts & uncles',tag:'mother',cls:'parent',deg:1},
+      {id:'millie',label:'Millie', tier:'Parents · aunts & uncles',tag:"father's sister · 3rd",cls:'coll',deg:3},
+      {id:'lauryn',label:'Lauryn', tier:'Parents · aunts & uncles',tag:"mother's sister · 3rd",cls:'coll',deg:3},
+      {id:'carlos',label:'Carlos', tier:"Decedent's generation",tag:'husband',cls:'spouse'},
+      {id:'evelyn',label:'Evelyn', tier:"Decedent's generation",tag:'sister',cls:'sib',deg:2,blood:'full'},
+      {id:'francine',label:'Francine',tier:"Decedent's generation",tag:'sister',cls:'sib',deg:2,blood:'full'},
+      {id:'guillermo',label:'Guillermo',tier:"Decedent's generation",tag:'brother',cls:'sib',deg:2,blood:'full'},
+      {id:'david', label:'David',  tier:'Children · nieces · cousins',tag:'adopted son',cls:'desc',deg:1},
+      {id:'noelle',label:'Noelle', tier:'Children · nieces · cousins',tag:"Millie's daughter · 4th",cls:'coll',deg:4}
+    ],
+    GENS:[
+      {y:14, lab:'Grandparents',               ids:['helga','ian','jason','kelly']},
+      {y:86, lab:'Parents · aunts & uncles',   ids:['anthony','berta','millie','lauryn']},
+      {y:158,lab:"Decedent's generation",      ids:['carlos','evelyn','francine','guillermo'],dec:true},
+      {y:236,lab:'Children · nieces · cousins',ids:['david','noelle']}
+    ],
+    LINKS:[
+      {f:['helga','ian'],    t:['anthony','millie']},
+      {f:['jason','kelly'],  t:['berta','lauryn']},
+      {f:['anthony','berta'],t:['__DEC__','evelyn','francine','guillermo']},
+      {f:['__DEC__'],        t:['david']},
+      {f:['millie'],         t:['noelle']}
+    ],
+    SCEN:[
+      {n:'Q1–Q2 · everyone alive', s:{helga:0,ian:0,jason:0,kelly:0,anthony:0,berta:0,millie:0,lauryn:0,carlos:0,evelyn:0,francine:0,guillermo:0,david:0,noelle:0},
+       prop:'separate', k:'The starting hypothetical',
+       t:'All fourteen survive. <b>Noelle is 4th degree</b> — up to Ian and Helga, then back down. <b>Kelly is an ascendant</b> even though she sits on the same maternal side as <b>Lauryn, a collateral</b>. <b>Side of the family is irrelevant; only direction is.</b>'},
+      {n:'Q3 · Berta and Evelyn predecease', s:{helga:0,ian:0,jason:0,kelly:0,anthony:0,berta:1,millie:0,lauryn:0,carlos:0,evelyn:1,francine:0,guillermo:0,david:0,noelle:0},
+       prop:'separate', k:'Answer: e — David takes all',
+       t:'The pruning <b>looks</b> like it reshuffles rung two, and options a–d were all rung-two answers. <b>But David is alive.</b> Adopted son = descendant under art. 880 <i>“by blood or by adoption”</i>, so art. 888 stops the ladder on <b>rung one</b>. Option f was the right answer to the <b>community</b> version — his favourite trap.'},
+      {n:'Q4 · seven more predecease', s:{helga:1,ian:1,jason:0,kelly:1,anthony:1,berta:1,millie:0,lauryn:0,carlos:0,evelyn:1,francine:1,guillermo:1,david:1,noelle:0},
+       prop:'separate', k:'Answer: a — Carlos takes all',
+       t:'Rungs one and two empty out. Art. <b>894</b> gives the spouse the separate property <b>“to the exclusion of other ascendants and other collaterals”</b> — disposing of Jason (ascendant) and Lauryn, Millie and Noelle (collaterals) <b>by class name</b>. The wrong options were <b>the next three rungs, in order</b>.'},
+      {n:'Q5 · same facts, community', s:{helga:1,ian:1,jason:0,kelly:1,anthony:1,berta:1,millie:0,lauryn:0,carlos:0,evelyn:1,francine:1,guillermo:1,david:1,noelle:0},
+       prop:'community', will:'no', k:'Answer: TRUE',
+       t:'Art. <b>889</b>: no descendants, so the spouse takes the decedent’s half <b>outright</b>. Art. 890 <b>never engages</b> — descendants are its <b>trigger</b>, not merely the other party. <b>No usufruct in anyone’s favour.</b>'},
+      {n:'★ The arc · Carlos with and without David', s:{carlos:0,david:0}, prop:'separate',
+       k:'The thesis of the whole quiz',
+       t:'Carlos takes <b>nothing</b> here. Kill David and he takes <b>everything</b>. Same husband, same marriage — <b>the spouse is simultaneously the least and the most protected heir in Louisiana</b>, and which one turns entirely on whether a descendant survives.'},
+      {n:'Noelle alone', s:{noelle:0}, prop:'separate', k:'4th degree, with nothing above her',
+       t:'Every nearer relation gone, so the 4th-degree cousin finally takes under art. <b>896</b>. Put <b>Millie or Lauryn</b> back — 3rd degree — and Noelle is excluded again. <b>Nearest in degree excludes all the others.</b> That is <i>Aranyosi</i>.'}
+    ]
+  };
+  var MODEL='generic';
+  function useModel(k){
+    MODEL=k; var m=MODELS[k];
+    P=m.P; GENS=m.GENS; LINKS=m.LINKS; SCEN=m.SCEN;
+    st={}; P.forEach(function(q){ st[q.id]=1; });
+    buildScenarios(); cur=null; revealed=false; STEP=0;
+    var mb=document.getElementById('models');
+    if(mb) [].forEach.call(mb.children,function(x){ x.classList.toggle('on', x.__m===k); });
+    load(SCEN[0]);
+  }
+
+  // ---- descendant roots: living children, plus predeceased children represented by issue
+  function descRoots(){
+    var roots=[];
+    P.filter(function(p){return p.cls==='desc';}).forEach(function(c){
+      if(A(c.id)) roots.push({label:c.label, holders:[{n:c.label,tr:false}], rep:false});
+      else if(AFT(c.id)) roots.push({label:c.label, holders:[{n:c.label,tr:true}], rep:false, tr:true});
+      else if(BEF(c.id)){
+        var iss=issueOf(c.id);
+        if(iss.length) roots.push({label:c.label, rep:true,
+          holders:iss.map(function(g){return {n:g.label, tr:AFT(g.id)};})});
+      }
+    });
+    if(roots.length) return roots;
+    // no child root survives -> grandchildren in their own right, by heads
+    var gk=P.filter(function(p){return p.cls==='gk' && (A(p.id)||AFT(p.id));});
+    return gk.map(function(g){return {label:g.label, holders:[{n:g.label,tr:AFT(g.id)}], rep:false, own:true};});
+  }
+
+  function sibSlots(){
+    var slots=[];
+    P.filter(function(p){return p.cls==='sib';}).forEach(function(s){
+      if(A(s.id)) slots.push({blood:s.blood,holders:[{n:s.label,tr:false}],rep:false});
+      else if(AFT(s.id)) slots.push({blood:s.blood,holders:[{n:s.label,tr:true}],rep:false,tr:true});
+      else if(BEF(s.id)){
+        var reps=P.filter(function(r){return r.cls==='sibdesc'&&r.repOf===s.id&&(A(r.id)||AFT(r.id));});
+        if(reps.length) slots.push({blood:s.blood,rep:true,repOf:s.label,
+          holders:reps.map(function(r){return {n:r.label,tr:AFT(r.id)};})});
+      }
+    });
+    return slots;
+  }
+
+  function emitRoot(root,num,den,takers,art,extra,raw){
+    var each=root.holders.length;
+    root.holders.forEach(function(h){
+      var cls = h.tr ? 'tr' : (root.rep ? 'rep' : '');
+      var who = h.n;
+      if(root.rep) who += ' <i>(representing '+root.label+')</i>';
+      if(h.tr) who += ' <i>&rarr; his own successors</i>';
+      var show = raw&&each===1 ? num+'/'+den : frac(num,den*each);
+      takers.push({cls:cls, who:who,
+        what:'<b>'+show+'</b>'+(each>1?' — the root&rsquo;s '+frac(num,den)+' split '+each+' ways':'')+(extra||''),
+        art:art + (root.rep?', 881, 885':'') + (h.tr?', 937':'')});
+    });
+  }
+
+  function compute(){
+    var steps=[],takers=[],notes=[],verdict='';
+    function step(t,art,hit){ steps.push({t:t,art:art,hit:!!hit}); }
+    function rest(l){ l.forEach(function(x){var y=x.split('|');step(y[0],y[1],false);}); }
+
+    var roots=descRoots(), parents=grp('parent'), slots=sibSlots(),
+        spouse=A('spouse'), spouseTr=AFT('spouse'), ascs=grp('asc'), colls=grp('coll');
+    var anyRep = roots.some(function(r){return r.rep;}) || slots.some(function(s){return s.rep;});
+    var anyTr  = roots.some(function(r){return r.holders.some(function(h){return h.tr;});}) ||
+                 slots.some(function(s){return s.holders.some(function(h){return h.tr;});}) || spouseTr;
+
+    if(prop==='community'){
+      verdict='Community property — the decedent’s one-half';
+      notes.push('Each spouse owns <b>a present undivided one-half interest</b> (art. 2336). Only the decedent’s half devolves.');
+      if(roots.length){
+        if(will==='yes'){
+          step('Descendants survive → art. 890 usufruct would arise … <b>but disposed of by testament</b>','890',true);
+          roots.forEach(function(r){ emitRoot(r,1,roots.length,takers,'890',' of the decedent’s half'); });
+          if(spouse) notes.push('<b>No usufruct.</b> Art. 890 gives one only <i>“to the extent that the decedent has not disposed of it by testament”</i> — <i>Richaud</i> and <i>Sylvester</i>.');
+        } else {
+          step('Descendants survive → they take, subject to the legal spousal usufruct','889–890',true);
+          roots.forEach(function(r){ emitRoot(r,1,roots.length,takers,'888, 890',
+            (spouse?' of the decedent’s half, in <b>naked ownership</b>':' of the decedent’s half, in full ownership')); });
+          if(spouse) takers.push({cls:'uf',who:'Spouse',
+            what:'<b>Usufruct</b> over the whole of the decedent’s half — ends on <b>death or remarriage</b>',art:'890'});
+        }
+        step('Surviving spouse takes the decedent’s half outright','889',false);
+      } else if(spouse){
+        step('Descendants survive','889–890',false);
+        step('<b>No descendants</b> → surviving spouse succeeds outright','889',true);
+        takers.push({cls:'',who:'Spouse',what:'<b>Full ownership</b> of the decedent’s entire half',art:'889'});
+      } else {
+        step('Descendants survive','889–890',false); step('A surviving spouse survives','889',false);
+        verdict='Past the end of the community scheme';
+        notes.push('⚠️ Arts. 889–890 are the <b>whole</b> community hierarchy and both rungs are empty. <b>The simulator will not guess</b> — ask him.');
+      }
+      notes.push('<b>No parent, sibling, ascendant or collateral ever touches community property.</b> It goes down to the children or across to the spouse.');
+      if(anyTr) notes.push(trNote());
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+
+    verdict='Separate property';
+    if(roots.length){
+      step('<b>Descendants</b> — equal portions, by heads in the same degree; <b>by roots</b> where any succeed by representation','888, 885',true);
+      roots.forEach(function(r){ emitRoot(r,1,roots.length,takers,'888'); });
+      if(anyRep) notes.push(repNote(roots));
+      if(roots.some(function(r){return r.own;})) notes.push('⚠️ <b>No child root survives</b>, so the grandchildren take <b>in their own right and by heads</b>. Where a predeceased child leaves issue, art. 882 makes it representation instead — toggle a child to <span style="color:var(--before)"><b>died BEFORE</b></span> to see the difference.');
+      rest(['Parents and siblings|891–893','Surviving spouse|894','Remote ascendants|895','Remote collaterals|896','The State|902']);
+      if(anyTr) notes.push(trNote());
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    step('Descendants','888',false);
+
+    if(parents.length&&slots.length){
+      step('<b>Parents AND siblings survive</b> → siblings take ownership, <b>subject to a usufruct in the parents</b>','891',true);
+      shareSibs(slots,takers,notes);
+      takers.push({cls:'uf',who:parents.map(function(p){return p.label;}).join(' + '),
+        what:'<b>Usufruct</b> over the siblings’ shares'+(parents.length>1?' — <b>joint and successive</b>':''),art:'891'});
+      rest(['Surviving spouse|894','Remote ascendants|895','Remote collaterals|896','The State|902']);
+      if(anyTr) notes.push(trNote());
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    if(slots.length){
+      step('<b>Siblings (or their descendants) survive, no parents</b> → <b>full ownership</b>','892',true);
+      shareSibs(slots,takers,notes);
+      rest(['Surviving spouse|894','Remote ascendants|895','Remote collaterals|896','The State|902']);
+      if(anyTr) notes.push(trNote());
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    if(parents.length){
+      step('<b>Parents survive, no siblings or their descendants</b> → the parents take','892',true);
+      parents.forEach(function(p){takers.push({cls:'',who:p.label,what:'<b>'+frac(1,parents.length)+'</b> in full ownership',art:'892'});});
+      rest(['Surviving spouse|894','Remote ascendants|895','Remote collaterals|896','The State|902']);
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    step('Parents and siblings','891–893',false);
+
+    if(spouse){
+      step('<b>Surviving spouse</b> — to the exclusion of other ascendants and collaterals','894',true);
+      takers.push({cls:'',who:'Spouse',what:'<b>All</b> of the separate property',art:'894'});
+      notes.push('⚠️ Note how <b>far down</b> the spouse sits for <b>separate</b> property — behind descendants, parents and siblings. The opposite of community.');
+      rest(['Remote ascendants|895','Remote collaterals|896','The State|902']);
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    step('Surviving spouse','894',false);
+
+    if(ascs.length){
+      var near=Math.min.apply(null,ascs.map(function(p){return p.deg;}));
+      var inNear=ascs.filter(function(p){return p.deg===near;});
+      var lines={}; inNear.forEach(function(p){lines[p.line||'x']=true;});
+      step('<b>More remote ascendants</b> — nearest degree excludes; equal degree splits by line','895',true);
+      if(Object.keys(lines).length>1){
+        inNear.forEach(function(p){
+          var n=inNear.filter(function(q){return (q.line||'x')===(p.line||'x');}).length;
+          takers.push({cls:'',who:p.label,what:'<b>'+frac(1,2*n)+'</b> — half to the '+(p.line==='m'?'maternal':'paternal')+' line, then by heads',art:'895'});});
+        notes.push('Both lines represented in the nearest degree → the estate splits <b>in half by line first</b>, then by heads within each, <b>whether or not the numbers are equal</b>.');
+      } else {
+        inNear.forEach(function(p){takers.push({cls:'',who:p.label,what:'<b>'+frac(1,inNear.length)+'</b>',art:'895'});});
+      }
+      notes.push('<b>Art. 883: representation NEVER takes place in favour of ascendants.</b> The nearest degree simply excludes the remote.');
+      rest(['Remote collaterals|896','The State|902']);
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    step('More remote ascendants','895',false);
+
+    if(colls.length){
+      var nd=Math.min.apply(null,colls.map(function(p){return p.deg;}));
+      var win=colls.filter(function(p){return p.deg===nd;}), lost=colls.filter(function(p){return p.deg>nd;});
+      step('<b>More remote collaterals</b> — the nearest in degree excludes all others','896',true);
+      win.forEach(function(p){takers.push({cls:'',who:p.label,what:'<b>'+frac(1,win.length)+'</b> — '+nd+'rd/th degree',art:'896'});});
+      if(lost.length) notes.push('<b>Excluded by degree:</b> '+lost.map(function(p){return p.label+' ('+p.deg+'th)';}).join(', ')+
+        '. <b>And art. 884 will not help them</b> — representation in the collateral line reaches only descendants <b>of brothers and sisters</b>, so a cousin cannot represent a predeceased uncle. <b>That is <i>Succession of Aranyosi</i>:</b> aunts and uncle at the <b>3rd</b> degree excluded the cousin at the <b>4th</b>.');
+      step('The State','902',false);
+      return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+    }
+    step('More remote collaterals','896',false);
+    step('<b>The State</b> — in default of blood, adopted relations, or a spouse not judicially separated','902',true);
+    takers.push({cls:'',who:'The State of Louisiana',what:'<b>The entire estate</b>',art:'902'});
+    return {verdict:verdict,takers:takers,steps:steps,notes:notes};
+  }
+
+  function repNote(roots){
+    var r=roots.filter(function(x){return x.rep;}).map(function(x){return x.label;});
+    return '<b>Representation (arts. 881, 882, 885):</b> '+r.join(', ')+' predeceased, so their descendants are put '+
+      '<b>&ldquo;in the place, degree, and rights of the person represented&rdquo;</b> and take <b>BY ROOTS</b> — '+
+      'the root&rsquo;s share divided among them, <b>not</b> a head&rsquo;s share each. In the direct line art. 882 allows this '+
+      '<b>ad infinitum</b>.';
+  }
+  function trNote(){
+    return '<b>Transmission (art. 937):</b> anyone marked <span style="color:var(--after)"><b>died AFTER</b></span> '+
+      '<b>survived the decedent</b>, so the rights <b>vested in them</b> at the instant of death (art. 935 seizin) and now pass to '+
+      '<b>their own successors</b> — <i>&ldquo;whether or not he accepted the rights, and whether or not he knew that the rights accrued to him.&rdquo;</i> '+
+      '<b>This is not representation.</b> There is no fiction and <b>no limitation</b>: any heir or legatee can take this way.';
+  }
+
+  function shareSibs(slots,takers,notes){
+    var mat=slots.filter(function(s){return s.blood==='full'||s.blood==='m';});
+    var pat=slots.filter(function(s){return s.blood==='full'||s.blood==='p';});
+    var mixed=slots.some(function(s){return s.blood!=='full';});
+    if(!mixed){
+      slots.forEach(function(s){ emitRoot(s,1,slots.length,takers,'893'); });
+      notes.push('All sibling roots are of the same two parents → art. 893 divides <b>equally</b>.');
+    } else if(!mat.length||!pat.length){
+      var only=mat.length?mat:pat;
+      only.forEach(function(s){ emitRoot(s,1,only.length,takers,'893'); });
+      notes.push('Siblings <b>on one side only</b> → art. 893: they &ldquo;take the entirety to the exclusion of all relations in the other line.&rdquo;');
+    } else {
+      var D=2*mat.length*pat.length;
+      slots.forEach(function(s){
+        var num=0;
+        if(s.blood==='full'||s.blood==='m') num+=pat.length;
+        if(s.blood==='full'||s.blood==='p') num+=mat.length;
+        emitRoot(s,num,D,takers,'893',s.blood==='full'?' — collects in <b>both</b> lines':' — own line only',true);
+      });
+      notes.push('<b>Art. 893:</b> half to each line; the maternal half among its '+mat.length+', the paternal among its '+pat.length+
+        '. <b>Full-blood siblings sit in both lines and collect twice.</b>'+
+        ((mat.length===3&&pat.length===4)?' <b>★ His exact board numbers: 4/24 · 7/24 · 7/24 · 3/24 · 3/24.</b>':''));
+    }
+    var reps=slots.filter(function(s){return s.rep;});
+    if(reps.length) notes.push('<b>Collateral representation (art. 884):</b> '+reps.map(function(s){return s.repOf;}).join(', ')+
+      ' predeceased, so their children step into the root. <b>Art. 884 reaches only descendants of brothers and sisters</b> — never a cousin representing an uncle.');
+  }
+
+
+  // ================= diagram views =================
+  var VIEW='tree', STEP=0;
+  var ART={
+   '880':['Art. 880 — Intestate succession','In the absence of valid testamentary disposition, the undisposed property of the deceased devolves by operation of law in favor of his descendants, ascendants, and collaterals, BY BLOOD OR BY ADOPTION, and in favor of his spouse not judicially separated from him, in the order provided in and according to the following articles.'],
+   '888':['Art. 888 — Descendants','Descendants succeed to the property of their ascendants. They take in equal portions and BY HEADS if they are in the same degree. They take BY ROOTS if all or some of them succeed by representation.'],
+   '881':['Art. 881 — Representation: effect','Representation is A FICTION OF THE LAW, the effect of which is to put the representative IN THE PLACE, DEGREE, AND RIGHTS of the person represented.'],
+   '882':['Art. 882 — Direct line','Representation takes place AD INFINITUM in the direct line of descendants. It is permitted in all cases…'],
+   '884':['Art. 884 — Collateral line','In the collateral line, representation is permitted IN FAVOR OF THE CHILDREN AND DESCENDANTS OF THE BROTHERS AND SISTERS of the deceased…'],
+   '885':['Art. 885 — By roots','In all cases in which representation is permitted, THE PARTITION IS MADE BY ROOTS; if one root has produced several branches, the subdivision is also made by roots in each branch, and the members of the same branch TAKE BY HEADS.'],
+   '891':['Art. 891 — Parents and siblings','…the brothers and sisters or their descendants succeed to the separate property SUBJECT TO A USUFRUCT IN FAVOR OF THE SURVIVING PARENT OR PARENTS. If both parents survive, the usufruct shall be JOINT AND SUCCESSIVE.'],
+   '892':['Art. 892 — Parents OR siblings','If the deceased leaves neither descendants nor parents, his brothers or sisters OR DESCENDANTS FROM THEM succeed to his separate property IN FULL OWNERSHIP…'],
+   '893':['Art. 893 — Half blood','…If they are born of DIFFERENT UNIONS, it is equally divided between the paternal and maternal lines: brothers or sisters fully related by blood take IN BOTH LINES and those related by half-blood take EACH IN HIS OWN LINE.'],
+   '894':['Art. 894 — Surviving spouse','If the deceased leaves neither descendants, nor parents, nor brothers, sisters, or descendants from them, his spouse not judicially separated shall succeed to his separate property TO THE EXCLUSION OF OTHER ASCENDANTS AND OTHER COLLATERALS.'],
+   '895':['Art. 895 — Remote ascendants','…If the ascendants in the paternal and maternal lines are in the same degree, the property is divided into TWO EQUAL SHARES, one to each line… the nearest degree EXCLUDES ascendants of a more remote degree.'],
+   '896':['Art. 896 — Remote collaterals','…Among the collateral relations, THE NEAREST IN DEGREE EXCLUDES ALL THE OTHERS. If there are several in the same degree, they take equally and BY HEADS.'],
+   '902':['Art. 902 — The State','In default of blood, adopted relations, or a spouse not judicially separated, the estate of the deceased BELONGS TO THE STATE.'],
+   '889':['Art. 889 — Community property','If the deceased leaves NO DESCENDANTS, his surviving spouse succeeds to his share of the community property.'],
+   '890':['Art. 890 — Spousal usufruct','If the deceased spouse is survived by descendants, the surviving spouse shall have A USUFRUCT over the decedent’s share of the community property TO THE EXTENT THAT THE DECEDENT HAS NOT DISPOSED OF IT BY TESTAMENT. This usufruct terminates when the surviving spouse DIES OR REMARRIES, whichever occurs first.'],
+   '937':['Art. 937 — Transmission','The rights of a successor are transmitted to his own successors at his death, WHETHER OR NOT HE ACCEPTED THE RIGHTS, AND WHETHER OR NOT HE KNEW that the rights accrued to him.'],
+   '935':['Art. 935 — Seizin','IMMEDIATELY AT THE DEATH of the decedent, universal successors acquire ownership of the estate…'],
+   '900':['Art. 900 — Degrees','The propinquity of consanguinity is established by THE NUMBER OF GENERATIONS, and each generation is called A DEGREE.'],
+   '901':['Art. 901 — How to count','In the DIRECT line, the number of degrees equals the generations between the heir and the deceased. In the COLLATERAL line, it equals the generations between the heir and THE COMMON ANCESTOR, PLUS the generations between the common ancestor and the deceased.'],
+   '883':['Art. 883 — No representation of ascendants','Representation DOES NOT TAKE PLACE in favor of the ascendants, the nearest relation in any degree always excluding those of a more remote degree.']
+  };
+  var TABS=[['tree','The tree'],['steps','Step by step'],['roots','Roots vs heads'],
+            ['ladder','The two ladders'],['degree','Counting degrees'],
+            ['half','Half-blood split'],['time','Before / after']];
+
+  function artBox(n){ var a=ART[n]; return a?'<div class="artq"><b class="n">'+a[0]+'</b>'+a[1]+'</div>':''; }
+  function svgWrap(w,h,inner){ return '<svg viewBox="0 0 '+w+' '+h+'" role="img">'+
+      '<g font-family="ui-sans-serif,system-ui,sans-serif" text-anchor="middle">'+inner+'</g></svg>'; }
+  function bx(x,y,w,h,fill,line,label,sub,subcol){
+    var o='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="8" fill="'+fill+'" stroke="'+line+'" stroke-width="2"/>';
+    o+='<text x="'+(x+w/2)+'" y="'+(y+21)+'" font-size="13" font-weight="700">'+esc(label)+'</text>';
+    if(sub) o+='<text x="'+(x+w/2)+'" y="'+(y+40)+'" font-size="14" font-weight="700" fill="'+(subcol||'var(--accent2)')+'">'+sub+'</text>';
+    return o;
+  }
+
+  // ---- step by step over the CURRENT facts
+  function viewSteps(){
+    var r=compute(), st2=r.steps, n=st2.length;
+    if(STEP>=n) STEP=n-1; if(STEP<0) STEP=0;
+    var cur2=st2[STEP];
+    var rows=st2.map(function(x,k){
+      var done=k<STEP, here=k===STEP;
+      var col = here ? (x.hit?'var(--accent)':'var(--muted)') : (done?'var(--muted)':'var(--rule)');
+      var bg  = here ? (x.hit?'var(--takes)':'var(--code)') : 'transparent';
+      return '<div style="display:flex;gap:9px;align-items:flex-start;padding:7px 10px;border-radius:8px;'+
+        'background:'+bg+';border-left:4px solid '+col+';margin:4px 0;'+(here?'':'opacity:.55;')+'">'+
+        '<span style="font:700 11px/1.5 ui-monospace,Menlo,monospace;color:'+col+';white-space:nowrap">'+x.art+'</span>'+
+        '<span style="font:'+(here?'600':'400')+' 14px/1.45 ui-sans-serif,system-ui,sans-serif">'+x.t+
+        (x.hit?' <b style="color:var(--accent)">← the answer stops here</b>':' <i style="color:var(--muted)">— empty</i>')+'</span></div>';
+    }).join('');
+    var key=(cur2.art||'').split(/[–,]/)[0].trim();
+    return rows +
+      '<div class="stepbar"><button class="stepb" id="sPrev"'+(STEP===0?' disabled':'')+'>← back</button>'+
+      '<button class="stepb" id="sNext"'+(STEP===n-1?' disabled':'')+'>next rung →</button>'+
+      '<span class="stepn">rung '+(STEP+1)+' of '+n+'</span></div>' + artBox(key);
+  }
+
+  // ---- by roots vs by heads, side by side
+  function viewRoots(){
+    var i=''; 
+    i+='<text x="180" y="20" font-size="13" font-weight="700" fill="var(--accent2)">BY ROOTS — correct</text>';
+    i+='<text x="540" y="20" font-size="13" font-weight="700" fill="var(--before)">BY HEADS — wrong here</text>';
+    i+='<line x1="360" y1="8" x2="360" y2="250" stroke="currentColor" stroke-width="1" opacity=".2"/>';
+    // left: roots
+    i+=bx(120,36,120,34,'var(--code)','var(--accent)','◆ DECEDENT','');
+    i+=bx(20,96,100,50,'var(--rep)','var(--before)','Child A','died before','var(--before)');
+    i+=bx(130,96,100,50,'var(--takes)','var(--alive)','Child B','1/2');
+    i+=bx(0,176,90,46,'var(--takes)','var(--alive)','A-1','1/4');
+    i+=bx(96,176,90,46,'var(--takes)','var(--alive)','A-2','1/4');
+    i+='<text x="70" y="168" font-size="11" font-weight="700" fill="var(--before)">split A’s 1/2</text>';
+    // right: heads
+    i+=bx(480,36,120,34,'var(--code)','var(--accent)','◆ DECEDENT','');
+    i+=bx(400,110,90,46,'var(--takes)','var(--rule)','Child B','1/3');
+    i+=bx(496,110,90,46,'var(--takes)','var(--rule)','A-1','1/3');
+    i+=bx(592,110,90,46,'var(--takes)','var(--rule)','A-2','1/3');
+    i+='<text x="540" y="186" font-size="12.5" fill="var(--before)">everyone counted as one head</text>';
+    i+='<text x="540" y="206" font-size="12.5" font-weight="700" fill="var(--before)">Child B is diluted from 1/2 to 1/3</text>';
+    return svgWrap(720,250,i)+artBox('885');
+  }
+
+  // ---- the two ladders
+  function viewLadder(){
+    var sep=[['1','Descendants','888'],['2','Parents &amp; siblings','891–893'],['3','Surviving spouse','894'],
+             ['4','Remote ascendants','895'],['5','Remote collaterals','896'],['S','The State','902']];
+    var com=[['1','Descendants, subject to the spousal usufruct','889–890'],['2','Surviving spouse','889–890']];
+    var i='';
+    i+='<text x="180" y="18" font-size="13" font-weight="700" fill="var(--accent)">SEPARATE — five rungs, then the State</text>';
+    i+='<text x="540" y="18" font-size="13" font-weight="700" fill="var(--accent2)">COMMUNITY — two rungs, and that is all</text>';
+    sep.forEach(function(r,k){
+      var y=34+k*34;
+      i+='<rect x="20" y="'+y+'" width="320" height="28" rx="6" fill="var(--panel)" stroke="var(--rule)" stroke-width="1.5"/>';
+      i+='<circle cx="40" cy="'+(y+14)+'" r="10" fill="'+(r[0]==='S'?'var(--muted)':'var(--accent)')+'"/>';
+      i+='<text x="40" y="'+(y+19)+'" font-size="12" font-weight="700" fill="#fff">'+r[0]+'</text>';
+      i+='<text x="185" y="'+(y+19)+'" font-size="12.5">'+r[1]+'</text>';
+      i+='<text x="318" y="'+(y+19)+'" font-size="11" font-weight="700" fill="var(--accent)" text-anchor="end">'+r[2]+'</text>';
+    });
+    com.forEach(function(r,k){
+      var y=34+k*34;
+      i+='<rect x="380" y="'+y+'" width="320" height="28" rx="6" fill="var(--panel)" stroke="var(--rule)" stroke-width="1.5"/>';
+      i+='<circle cx="400" cy="'+(y+14)+'" r="10" fill="var(--accent2)"/>';
+      i+='<text x="400" y="'+(y+19)+'" font-size="12" font-weight="700" fill="#fff">'+r[0]+'</text>';
+      i+='<text x="548" y="'+(y+19)+'" font-size="12">'+r[1]+'</text>';
+      i+='<text x="678" y="'+(y+19)+'" font-size="11" font-weight="700" fill="var(--accent2)" text-anchor="end">'+r[2]+'</text>';
+    });
+    i+='<text x="540" y="132" font-size="12.5" fill="var(--muted)">No parent, sibling, ascendant</text>';
+    i+='<text x="540" y="150" font-size="12.5" fill="var(--muted)">or collateral EVER touches it.</text>';
+    i+='<text x="540" y="176" font-size="12.5" font-weight="700" fill="var(--accent2)">Down to the children,</text>';
+    i+='<text x="540" y="194" font-size="12.5" font-weight="700" fill="var(--accent2)">or across to the spouse.</text>';
+    i+='<text x="180" y="252" font-size="12.5" font-weight="700" fill="var(--accent)">The spouse sits THIRD here…</text>';
+    i+='<text x="540" y="252" font-size="12.5" font-weight="700" fill="var(--accent2)">…but SECOND OF TWO here.</text>';
+    return svgWrap(720,266,i)+artBox('894');
+  }
+
+  // ---- counting degrees
+  function viewDegree(){
+    var i='';
+    i+='<text x="170" y="18" font-size="13" font-weight="700" fill="var(--accent2)">DIRECT — just count down</text>';
+    i+='<text x="530" y="18" font-size="13" font-weight="700" fill="var(--accent)">COLLATERAL — up, then back down</text>';
+    i+='<line x1="352" y1="8" x2="352" y2="248" stroke="currentColor" stroke-width="1" opacity=".2"/>';
+    [['◆ Decedent','',0],['Child','1st degree',1],['Grandchild','2nd degree',2],['Great-grandchild','3rd degree',3]]
+      .forEach(function(r,k){
+        var y=34+k*52;
+        i+=bx(90,y,170,40,k?'var(--takes)':'var(--code)',k?'var(--alive)':'var(--accent)',r[0],r[1]);
+        if(k) i+='<line x1="175" y1="'+(y-12)+'" x2="175" y2="'+y+'" stroke="currentColor" stroke-width="2" opacity=".4"/>';
+      });
+    i+=bx(470,34,150,40,'var(--code)','var(--accent)','Common ancestor','');
+    i+='<text x="545" y="90" font-size="11.5" fill="var(--muted)">grandparents</text>';
+    i+=bx(392,110,140,40,'var(--panel)','var(--rule)','Parent','1 up');
+    i+=bx(556,110,140,40,'var(--panel)','var(--rule)','Aunt / Uncle','3rd degree');
+    i+=bx(392,186,140,40,'var(--code)','var(--accent)','◆ Decedent','');
+    i+=bx(556,186,140,40,'var(--takes)','var(--alive)','Cousin','4th degree');
+    i+='<g fill="none" stroke="currentColor" stroke-width="2" opacity=".4">';
+    i+='<line x1="462" y1="150" x2="462" y2="186"/><line x1="626" y1="150" x2="626" y2="186"/>';
+    i+='<line x1="462" y1="110" x2="462" y2="74"/><line x1="626" y1="110" x2="626" y2="74"/>';
+    i+='<line x1="462" y1="74" x2="626" y2="74"/></g>';
+    i+='<text x="545" y="248" font-size="12.5" font-weight="700" fill="var(--accent)">2 up + 2 down = 4</text>';
+    return svgWrap(720,262,i)+artBox('901');
+  }
+
+  // ---- half-blood
+  function viewHalf(){
+    var rows=[['A','half — maternal','4/24','1/6','—'],['B','FULL BLOOD','7/24','1/6','1/8'],
+              ['C','FULL BLOOD','7/24','1/6','1/8'],['D','half — paternal','3/24','—','1/8'],
+              ['E','half — paternal','3/24','—','1/8']];
+    var i='';
+    i+='<text x="360" y="18" font-size="13" font-weight="700" fill="var(--accent)">Half to the maternal line · half to the paternal</text>';
+    i+='<text x="150" y="46" font-size="11.5" font-weight="700" fill="var(--muted)">sibling</text>';
+    i+='<text x="330" y="46" font-size="11.5" font-weight="700" fill="var(--muted)">maternal ½ (3 roots)</text>';
+    i+='<text x="480" y="46" font-size="11.5" font-weight="700" fill="var(--muted)">paternal ½ (4 roots)</text>';
+    i+='<text x="640" y="46" font-size="11.5" font-weight="700" fill="var(--accent2)">total</text>';
+    rows.forEach(function(r,k){
+      var y=58+k*36, full=r[1].indexOf('FULL')===0;
+      i+='<rect x="30" y="'+y+'" width="660" height="30" rx="6" fill="'+(full?'var(--takes)':'var(--panel)')+'" stroke="'+(full?'var(--alive)':'var(--rule)')+'" stroke-width="1.5"/>';
+      i+='<text x="150" y="'+(y+20)+'" font-size="12.5" font-weight="700">'+r[0]+' <tspan font-weight="400" fill="var(--muted)">'+r[1]+'</tspan></text>';
+      i+='<text x="330" y="'+(y+20)+'" font-size="13">'+r[3]+'</text>';
+      i+='<text x="480" y="'+(y+20)+'" font-size="13">'+r[4]+'</text>';
+      i+='<text x="640" y="'+(y+20)+'" font-size="14" font-weight="700" fill="var(--accent2)">'+r[2]+'</text>';
+    });
+    i+='<text x="360" y="256" font-size="12.5" font-weight="700" fill="var(--accent)">Full-blood siblings sit in BOTH lines and collect twice — 24ths because LCM(6,8)=24</text>';
+    return svgWrap(720,268,i)+artBox('893');
+  }
+
+  // ---- before / after
+  function viewTime(){
+    var i='';
+    i+='<line x1="40" y1="95" x2="680" y2="95" stroke="currentColor" stroke-width="2" opacity=".3"/>';
+    i+='<circle cx="360" cy="95" r="7" fill="var(--accent)"/>';
+    i+='<text x="360" y="120" font-size="13" font-weight="700" fill="var(--accent)">DECEDENT DIES</text>';
+    i+='<rect x="52" y="26" width="250" height="52" rx="9" fill="var(--rep)" stroke="var(--before)" stroke-width="2"/>';
+    i+='<text x="177" y="46" font-size="14" font-weight="700" fill="var(--before)">heir dies BEFORE</text>';
+    i+='<text x="177" y="66" font-size="13" fill="var(--before)">REPRESENTATION — arts. 881–885</text>';
+    i+='<rect x="418" y="26" width="250" height="52" rx="9" fill="var(--tr)" stroke="var(--after)" stroke-width="2"/>';
+    i+='<text x="543" y="46" font-size="14" font-weight="700" fill="var(--after)">heir dies AFTER</text>';
+    i+='<text x="543" y="66" font-size="13" fill="var(--after)">TRANSMISSION — art. 937</text>';
+    i+='<text x="177" y="150" font-size="12.5" fill="var(--muted)">nothing ever vested —</text>';
+    i+='<text x="177" y="167" font-size="12.5" fill="var(--muted)">his issue take FROM the decedent</text>';
+    i+='<text x="543" y="150" font-size="12.5" fill="var(--muted)">it vested at the instant of death —</text>';
+    i+='<text x="543" y="167" font-size="12.5" fill="var(--muted)">it passes THROUGH his own estate</text>';
+    i+='<text x="177" y="196" font-size="12" font-weight="700" fill="var(--before)">FENCED: descendants &amp; siblings only</text>';
+    i+='<text x="543" y="196" font-size="12" font-weight="700" fill="var(--after)">OPEN: any heir or legatee</text>';
+    return svgWrap(720,210,i)+artBox('937');
+  }
+
+  // ---------------- live diagram ----------------
+  function esc(x){ return String(x).replace(/[&<>]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[m];}); }
+
+  // full-family pyramid: ancestors above, decedent's generation in the band, issue below
+  var GEN_GENS=[
+    {y:14,  lab:'Grandparents',            ids:['gm','gf']},
+    {y:86,  lab:'Parents · aunts & uncles',ids:['mom','dad','uncle']},
+    {y:158, lab:"Decedent's generation",   ids:['spouse','sibF1','sibF2','sibM','sibP','sibP2'], dec:true},
+    {y:236, lab:'Children · nieces · cousins', ids:['c1','c2','c3','niece','cous']},
+    {y:308, lab:'Grandchildren',           ids:['a1','a2','c3a']}
+  ];
+
+  function shareMap(){
+    var m={}, r=compute();
+    r.takers.forEach(function(t){
+      var nm=String(t.who).replace(/<[^>]+>/g,'')
+              .replace(/&[a-z]+;/gi,' ')          // kill entities like &rarr; left by the label
+              .replace(/\(.*?\)/g,'')            // drop "(representing X)"
+              .split(/\s+his own successors/)[0]  // drop the transmission suffix
+              .replace(/\s+/g,' ').trim();
+      var val=(String(t.what).match(/<b>([^<]+)<\/b>/)||[])[1]||'';
+      if(!nm) return;
+      m[nm]=val;
+      if(/Usufruct/i.test(t.what)) m[nm]='usufruct';
+      if(t.cls==='tr') m[nm]=val+' →';
+    });
+    return m;
+  }
+
+  var GEN_LINKS=[
+    {f:['gm'],        t:['mom']},
+    {f:['gf'],        t:['dad','uncle']},
+    {f:['mom','dad'], t:['__DEC__','sibF1','sibF2']},
+    {f:['mom'],       t:['sibM']},
+    {f:['dad'],       t:['sibP','sibP2']},
+    {f:['__DEC__'],   t:['c1','c2','c3']},
+    {f:['sibF1'],     t:['niece']},
+    {f:['uncle'],     t:['cous']},
+    {f:['c1'],        t:['a1','a2']},
+    {f:['c3'],        t:['c3a']}
+  ];
+
+  function viewTree(){
+    var box=document.getElementById('diagbox'), cap=document.getElementById('diagcap');
+    if(!box) return '';
+    var sh=shareMap(), W=1000, H=376, pos={}, boxes=[];
+
+    // ---- pass 1: lay everything out and remember where each person sits
+    GENS.forEach(function(g){
+      var items=g.ids.slice();
+      if(g.dec) items.splice(1,0,'__DEC__');
+      var n=items.length, bw=Math.min(132,(W-180)/n), gap=10;
+      var total=n*bw+(n-1)*gap, x0=(W-total)/2+40;
+      items.forEach(function(id,k){
+        var x=x0+k*(bw+gap), y=g.y+22, h=46;
+        pos[id]={cx:x+bw/2, top:y, bot:y+h, x:x, w:bw, h:h};
+        boxes.push({id:id, x:x, y:y, w:bw, h:h});
+      });
+    });
+
+    var o=[];
+    o.push('<rect x="0" y="150" width="'+W+'" height="70" fill="var(--code)" opacity=".4" rx="10"/>');
+
+    // ---- pass 2: connectors, drawn first so they sit behind the boxes
+    // Each parent line gets its own hue so you can TRACE a branch by eye —
+    // with one grey for everything the lines cross each other and you cannot
+    // tell whose child is whose.
+    LINKS.forEach(function(L,li){
+      var col=branchColor(L.f[0]||('l'+li));
+      o.push('<g fill="none" stroke="'+col+'" stroke-width="2.1" opacity=".72" stroke-linecap="round">');
+      var par=L.f.map(function(id){return pos[id];}).filter(Boolean);
+      var kids=L.t.map(function(id){return pos[id];}).filter(Boolean);
+      if(!par.length||!kids.length){ o.push('</g>'); return; }
+      var px=par.reduce(function(a,b){return a+b.cx;},0)/par.length;
+      var pb=Math.max.apply(null,par.map(function(q){return q.bot;}));
+      var kt=Math.min.apply(null,kids.map(function(q){return q.top;}));
+      var mid=pb+(kt-pb)/2;
+      if(par.length>1){                       // join the two parents first
+        var lx=Math.min.apply(null,par.map(function(q){return q.cx;}));
+        var rx=Math.max.apply(null,par.map(function(q){return q.cx;}));
+        o.push('<line x1="'+lx+'" y1="'+(pb+7)+'" x2="'+rx+'" y2="'+(pb+7)+'"/>');
+        par.forEach(function(q){ o.push('<line x1="'+q.cx+'" y1="'+q.bot+'" x2="'+q.cx+'" y2="'+(pb+7)+'"/>'); });
+        o.push('<line x1="'+px+'" y1="'+(pb+7)+'" x2="'+px+'" y2="'+mid+'"/>');
+      } else {
+        o.push('<line x1="'+px+'" y1="'+pb+'" x2="'+px+'" y2="'+mid+'"/>');
+      }
+      var kxs=kids.map(function(q){return q.cx;});
+      var kmin=Math.min.apply(null,kxs.concat([px])), kmax=Math.max.apply(null,kxs.concat([px]));
+      o.push('<line x1="'+kmin+'" y1="'+mid+'" x2="'+kmax+'" y2="'+mid+'"/>');
+      kids.forEach(function(q){ o.push('<line x1="'+q.cx+'" y1="'+mid+'" x2="'+q.cx+'" y2="'+q.top+'"/>'); });
+      o.push('</g>');
+    });
+    // marriage bar: spouse — decedent
+    if(pos['spouse']&&pos['__DEC__']){
+      var a=pos['spouse'], b=pos['__DEC__'], my=a.top+a.h/2;
+      o.push('<line x1="'+(a.x+a.w)+'" y1="'+my+'" x2="'+pos['__DEC__'].x+'" y2="'+my+
+             '" stroke="var(--accent)" stroke-width="2.5" opacity=".55"/>');
+      o.push('<text x="'+((a.x+a.w+b.x)/2)+'" y="'+(my-6)+'" font-size="9" fill="var(--accent)" opacity=".8">m.</text>');
+    }
+
+    // ---- pass 3: the people
+    GENS.forEach(function(g){
+      o.push('<text x="14" y="'+(g.y+16)+'" font-size="10.5" font-weight="700" text-anchor="start" '+
+             'fill="var(--muted)" letter-spacing="1.2">'+g.lab.toUpperCase()+'</text>');
+    });
+    boxes.forEach(function(bxi){
+      var id=bxi.id, x=bxi.x, y=bxi.y, bw=bxi.w, h=bxi.h;
+      if(id==='__DEC__'){
+        o.push('<g class="pn" data-p="__DEC__" style="cursor:context-menu">');
+        o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="9" fill="var(--code)" stroke="var(--accent)" stroke-width="3"/>');
+        o.push('<text x="'+(x+bw/2)+'" y="'+(y+28)+'" font-size="13" font-weight="700" fill="var(--accent)">◆ DECEDENT</text>');
+        o.push('</g>');
+        return;
+      }
+      var pp=null; P.forEach(function(q){ if(q.id===id) pp=q; });
+      if(!pp) return;
+      var stt=st[id], takes=sh[pp.label];
+      var fill='var(--panel)', line='var(--rule)', txt='var(--muted)', tag='';
+      if(stt===0){ line='var(--alive)'; txt='var(--ink)'; tag='alive'; }
+      else if(stt===1){ fill='var(--rep)'; line='var(--before)'; txt='var(--before)'; tag='died BEFORE'; }
+      else if(stt===2){ fill='var(--tr)'; line='var(--after)'; txt='var(--after)'; tag='died AFTER'; }
+      if(takes){ fill='var(--takes)'; line='var(--alive)'; }
+      // Genealogy convention: square-ish for male, round for female, plain for
+      // unstated. rx alone carries it, so it survives the PNG export.
+      var rx = pp.sex==='m' ? 3 : (pp.sex==='f' ? 22 : 9);
+      o.push('<g class="pn" data-p="'+id+'" style="cursor:pointer">');
+      o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'" stroke="'+line+'" stroke-width="2"'+
+             (stt===1&&!takes?' stroke-dasharray="5 3"':'')+'/>');
+      if(pp.sex) o.push('<text x="'+(x+9)+'" y="'+(y+13)+'" font-size="10" font-weight="700" fill="'+line+'" opacity=".85" text-anchor="start">'+(pp.sex==='m'?'\u2642':'\u2640')+'</text>');
+      o.push('<text x="'+(x+bw/2)+'" y="'+(y+19)+'" font-size="12" font-weight="700" fill="'+txt+'">'+esc(pp.label)+'</text>');
+      if(takes) o.push('<text x="'+(x+bw/2)+'" y="'+(y+37)+'" font-size="14" font-weight="700" fill="var(--accent2)">'+takes+'</text>');
+      else o.push('<text x="'+(x+bw/2)+'" y="'+(y+36)+'" font-size="9" fill="'+txt+'" opacity=".8">'+tag+'</text>');
+      if(stt===1&&!takes) o.push('<line x1="'+(x+6)+'" y1="'+(y+h-6)+'" x2="'+(x+bw-6)+'" y2="'+(y+6)+'" stroke="var(--before)" stroke-width="1.6" opacity=".45"/>');
+      o.push('</g>');
+    });
+
+    box.innerHTML=svgWrap(W,H,o.join(''));
+    // click a box to cycle alive → before → after; double-click to edit it
+    var CLICK=null;
+    [].forEach.call(box.querySelectorAll('g.pn'),function(g){
+      var pid=g.getAttribute('data-p');
+      g.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        if(pid==='__DEC__') return;          // the decedent is the fixed point
+        clearTimeout(CLICK);
+        CLICK=setTimeout(function(){ cycleState(pid); },210);   // let dblclick win
+      });
+      g.addEventListener('dblclick',function(ev){
+        ev.preventDefault(); ev.stopPropagation(); clearTimeout(CLICK);
+        openEditor(pid, ev.clientX, ev.clientY);
+      });
+      g.addEventListener('contextmenu',function(ev){
+        ev.preventDefault(); ev.stopPropagation(); clearTimeout(CLICK);
+        openContext(pid, ev.clientX, ev.clientY);
+      });
+      var t=document.createElementNS('http://www.w3.org/2000/svg','title');
+      t.textContent='click: status · double-click: edit · right-click: all options';
+      g.appendChild(t);
+    });
+    var takers=Object.keys(sh);
+    cap.innerHTML = takers.length
+      ? '<b>Taking on these facts:</b> '+takers.map(function(k){return esc(k)+' <b>'+sh[k]+'</b>';}).join(' · ')+
+        '. Dashed and struck through = <b>predeceased without issue</b>, simply drops out; blue with an <b>→</b> = <b>died after</b>, so that share passes on by <b>transmission</b> through their own estate.'
+      : '<i>Nobody takes on these facts.</i>';
+    return 'DONE';
+  }
+
+  function drawDiagram(){
+    var box=document.getElementById('diagbox'), cap=document.getElementById('diagcap'),
+        tb=document.getElementById('tabs');
+    if(!box) return;
+    if(tb && !tb.__built){
+      tb.__built=1;
+      TABS.forEach(function(t){
+        var b=document.createElement('button'); b.className='tab'; b.textContent=t[1]; b.__v=t[0];
+        b.onclick=function(){ VIEW=t[0]; STEP=0; drawDiagram(); };
+        tb.appendChild(b);
+      });
+    }
+    if(tb) [].forEach.call(tb.children,function(x){ x.classList.toggle('on', x.__v===VIEW); });
+
+    if(VIEW==='tree'){ viewTree(); return; }
+    var html='', capt='';
+    if(VIEW==='steps'){ html=viewSteps();
+      capt='Walk the ladder one rung at a time <b>against the facts you have set</b>. A rung marked <i>empty</i> is one the Code reached and found nobody in.'; }
+    else if(VIEW==='roots'){ html=viewRoots();
+      capt='<b>Two children, one predeceased leaving two of his own.</b> By roots the branch keeps its half. By heads everyone counts as one and <b>Child B is quietly diluted from 1/2 to 1/3</b> — that is why art. 885 exists.'; }
+    else if(VIEW==='ladder'){ html=viewLadder();
+      capt='The single sharpest contrast in the unit: <b>the spouse is third for separate property and second of two for community</b>.'; }
+    else if(VIEW==='degree'){ html=viewDegree();
+      capt='Direct line you simply count generations. Collateral you go <b>up to the common ancestor and back down</b>. Sibling 2 · niece and uncle 3 · first cousin 4.'; }
+    else if(VIEW==='half'){ html=viewHalf();
+      capt='His board problem. Three roots in the maternal line, four in the paternal; <b>full-blood siblings sit in both and collect twice</b>.'; }
+    else if(VIEW==='time'){ html=viewTime();
+      capt='<b>Representation is a fiction, so the law rations it. Transmission is not, so it does not need to.</b>'; }
+    box.innerHTML=html; cap.innerHTML=capt;
+    var pv=document.getElementById('sPrev'), nx=document.getElementById('sNext');
+    if(pv) pv.onclick=function(){ if(STEP>0){STEP--; drawDiagram();} };
+    if(nx) nx.onclick=function(){ STEP++; drawDiagram(); };
+  }
+
+
+  // ---------------- add / remove people (added 2026-08-31) ----------------
+  // Each role writes the SAME fields the built-in models use, so an added
+  // person computes exactly like a hand-authored one. Getting cls/deg/blood/
+  // repOf wrong here would silently corrupt every share on the page.
+  var ROLES=[
+    {k:'child',   lab:'Child of decedent',        tier:'Children',    f:{cls:'desc',deg:1},              from:'__DEC__'},
+    {k:'gk',      lab:'Grandchild (child of…)',   tier:'Grandchildren',f:{cls:'gk',deg:2},               parentOf:'desc'},
+    {k:'sibF',    lab:'Sibling — full blood',     tier:"Decedent's generation", f:{cls:'sib',deg:2,blood:'full'}, from:'PARENTS'},
+    {k:'sibM',    lab:'Half-sibling — same mother',tier:"Decedent's generation",f:{cls:'sib',deg:2,blood:'m'},    from:'MOM'},
+    {k:'sibP',    lab:'Half-sibling — same father',tier:"Decedent's generation",f:{cls:'sib',deg:2,blood:'p'},    from:'DAD'},
+    {k:'sibdesc', lab:'Niece / nephew (child of…)',tier:'Children',   f:{cls:'sibdesc',deg:3},           parentOf:'sib'},
+    {k:'parent',  lab:'Parent',                   tier:'Parents',     f:{cls:'parent',deg:1}},
+    {k:'asc',     lab:'Grandparent',              tier:'Grandparents',f:{cls:'asc',deg:2,line:'m'}},
+    {k:'coll3',   lab:'Aunt / uncle (3rd degree)',tier:'Parents',     f:{cls:'coll',deg:3}},
+    {k:'coll4',   lab:'Cousin (4th degree)',      tier:'Children',    f:{cls:'coll',deg:4}},
+    {k:'spouse',  lab:'Spouse',                   tier:"Decedent's generation", f:{cls:'spouse'}}
+  ];
+  function roleByKey(k){ for(var i=0;i<ROLES.length;i++) if(ROLES[i].k===k) return ROLES[i]; return null; }
+  function genForTier(t){
+    for(var i=0;i<GENS.length;i++) if(GENS[i].lab.indexOf(t)===0||GENS[i].lab===t) return GENS[i];
+    for(var j=0;j<GENS.length;j++) if(GENS[j].lab.toLowerCase().indexOf(t.toLowerCase())>-1) return GENS[j];
+    return GENS[GENS.length-1];
+  }
+  function candidates(cls){
+    return P.filter(function(q){ return q.cls===cls; });
+  }
+  function uid(base){
+    var n=base.toLowerCase().replace(/[^a-z0-9]/g,'')||'p', i=1, id=n;
+    while(P.some(function(q){return q.id===id;})){ id=n+(++i); }
+    return id;
+  }
+  function addPerson(name, roleKey, parentId){
+    var R=roleByKey(roleKey); if(!R||!name) return;
+    var id=uid(name), o={id:id,label:name,tier:R.tier};
+    for(var k in R.f) o[k]=R.f[k];
+    if(R.parentOf && parentId){ o.repOf=parentId; o.tag='child of '+(P.filter(function(q){return q.id===parentId;})[0]||{}).label; }
+    P.push(o);
+    genForTier(R.tier).ids.push(id);
+    st[id]=0;
+    // draw a connector so the tree does not show an orphan chip
+    var fromIds=null;
+    if(R.parentOf && parentId) fromIds=[parentId];
+    else if(R.from==='__DEC__') fromIds=['__DEC__'];
+    else if(R.from==='PARENTS'){ var pr=candidates('parent').map(function(q){return q.id;}); if(pr.length) fromIds=pr.slice(0,2); }
+    else if(R.from==='MOM'||R.from==='DAD'){ var pp=candidates('parent'); if(pp.length) fromIds=[ (R.from==='MOM'?pp[0]:pp[pp.length-1]).id ]; }
+    if(fromIds){
+      var hit=null;
+      LINKS.forEach(function(L){ if(L.f.join(',')===fromIds.join(',')) hit=L; });
+      if(hit) hit.t.push(id); else LINKS.push({f:fromIds,t:[id]});
+    }
+    cur=null; render();
+  }
+  function removePerson(id){
+    P=P.filter(function(q){ return q.id!==id; });
+    // anyone who represented through them goes too — an orphaned
+    // grandchild would otherwise keep taking by representation from nobody.
+    var orphans=P.filter(function(q){ return q.repOf===id; }).map(function(q){return q.id;});
+    P=P.filter(function(q){ return q.repOf!==id; });
+    var gone=[id].concat(orphans);
+    GENS.forEach(function(g){ g.ids=g.ids.filter(function(x){ return gone.indexOf(x)<0; }); });
+    LINKS.forEach(function(L){ L.f=L.f.filter(function(x){return gone.indexOf(x)<0;});
+                               L.t=L.t.filter(function(x){return gone.indexOf(x)<0;}); });
+    LINKS=LINKS.filter(function(L){ return L.f.length&&L.t.length; });
+    gone.forEach(function(x){ delete st[x]; });
+    cur=null; render();
+  }
+  function openAddForm(host){
+    if(host.querySelector('.addform')) return;
+    var f=document.createElement('div'); f.className='addform';
+    var sel='<select class="r">'+ROLES.map(function(r){return '<option value="'+r.k+'">'+r.lab+'</option>';}).join('')+'</select>';
+    f.innerHTML='<span class="lab">Add</span><input class="n" placeholder="Name" autocomplete="off">'+sel+
+                '<select class="pp" style="display:none"></select>'+
+                '<button class="ok">Add</button><button class="cx">Cancel</button>';
+    host.appendChild(f);
+    var nIn=f.querySelector('.n'), rSel=f.querySelector('.r'), pSel=f.querySelector('.pp');
+    function syncParent(){
+      var R=roleByKey(rSel.value);
+      if(R&&R.parentOf){
+        var list=candidates(R.parentOf);
+        pSel.innerHTML=list.map(function(q){return '<option value="'+q.id+'">of '+q.label+'</option>';}).join('');
+        pSel.style.display=list.length?'':'none';
+      } else pSel.style.display='none';
+    }
+    rSel.onchange=syncParent; syncParent(); nIn.focus();
+    f.querySelector('.ok').onclick=function(){
+      var nm=nIn.value.trim(); if(!nm){ nIn.focus(); return; }
+      addPerson(nm, rSel.value, pSel.style.display==='none'?null:pSel.value);
+    };
+    f.querySelector('.cx').onclick=function(){ f.remove(); };
+    nIn.onkeydown=function(e){ if(e.key==='Enter') f.querySelector('.ok').click();
+                               if(e.key==='Escape') f.remove(); };
+  }
+
+
+  // ---------------- diagram-side editing (2026-08-31) ----------------
+  var BRANCH=['#8c2d19','#2f5d8a','#2f6f4f','#8a5a1b','#6b4c9a','#1f7a4d','#a03b6b','#3f6f8a'];
+  function branchColor(k){
+    var n=0; k=String(k); for(var i=0;i<k.length;i++) n=(n*31+k.charCodeAt(i))>>>0;
+    return BRANCH[n%BRANCH.length];
+  }
+  function parentOf(id){
+    for(var i=0;i<LINKS.length;i++) if(LINKS[i].t.indexOf(id)>-1) return LINKS[i];
+    return null;
+  }
+  function reParent(id, newParentId){
+    var L=parentOf(id);
+    if(L){ L.t=L.t.filter(function(x){return x!==id;}); }
+    LINKS=LINKS.filter(function(l){ return l.f.length&&l.t.length; });
+    if(newParentId){
+      var hit=null;
+      LINKS.forEach(function(l){ if(l.f.length===1&&l.f[0]===newParentId) hit=l; });
+      if(hit) hit.t.push(id); else LINKS.push({f:[newParentId],t:[id]});
+      var pr=null; P.forEach(function(q){ if(q.id===id) pr=q; });
+      // representation follows the parent: a grandchild or a niece takes
+      // THROUGH the person above them, so repOf has to move as well.
+      if(pr && (pr.cls==='gk'||pr.cls==='sibdesc') && newParentId!=='__DEC__') pr.repOf=newParentId;
+    }
+    cur=null; render();
+  }
+  function cycleState(id){
+    st[id] = (st[id]===0) ? 1 : (st[id]===1 ? 2 : 0);
+    cur=null; if(quiz) revealed=false; render();
+  }
+  function openEditor(id, clientX, clientY){
+    var pp=null; P.forEach(function(q){ if(q.id===id) pp=q; });
+    if(!pp) return;
+    var old=document.getElementById('pedit'); if(old) old.remove();
+    var host=document.createElement('div'); host.id='pedit'; host.className='pedit';
+    var others=P.filter(function(q){ return q.id!==id; });
+    var cands=[{id:'',label:'— no parent —'},{id:'__DEC__',label:'the DECEDENT'}]
+      .concat(others.map(function(q){ return {id:q.id,label:q.label}; }));
+    var L=parentOf(id), curPar=L?(L.f[0]||''):'';
+    host.innerHTML =
+      '<div class="ph">Edit person</div>'+
+      '<label>Name<input class="nm" value="'+esc(pp.label)+'"></label>'+
+      '<label>Sex<select class="sx">'+
+        '<option value=""'+(!pp.sex?' selected':'')+'>— not stated —</option>'+
+        '<option value="m"'+(pp.sex==='m'?' selected':'')+'>\u2642 male</option>'+
+        '<option value="f"'+(pp.sex==='f'?' selected':'')+'>\u2640 female</option>'+
+      '</select></label>'+
+      '<label>Status<select class="stt">'+
+        '<option value="0"'+(st[id]===0?' selected':'')+'>alive</option>'+
+        '<option value="1"'+(st[id]===1?' selected':'')+'>died BEFORE \u2192 representation</option>'+
+        '<option value="2"'+(st[id]===2?' selected':'')+'>died AFTER \u2192 transmission</option>'+
+      '</select></label>'+
+      '<label>Descends from<select class="par">'+
+        cands.map(function(c){ return '<option value="'+c.id+'"'+(c.id===curPar?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('')+
+      '</select></label>'+
+      '<div class="pb"><button class="ok">Apply</button>'+
+      '<button class="rm2">Remove</button><button class="cx">Close</button></div>';
+    document.body.appendChild(host);
+    var r=host.getBoundingClientRect();
+    host.style.left=Math.max(8,Math.min(clientX-r.width/2, window.innerWidth-r.width-8))+'px';
+    host.style.top =Math.max(8,Math.min(clientY+14, window.innerHeight-r.height-8))+'px';
+    var nm=host.querySelector('.nm'); nm.focus(); nm.select();
+    function apply(){
+      var v=nm.value.trim(); if(v) pp.label=v;
+      pp.sex=host.querySelector('.sx').value||'';
+      st[id]=parseInt(host.querySelector('.stt').value,10)||0;
+      var np=host.querySelector('.par').value;
+      host.remove();
+      if(np!==curPar) reParent(id,np); else { cur=null; render(); }
+    }
+    host.querySelector('.ok').onclick=apply;
+    host.querySelector('.cx').onclick=function(){ host.remove(); };
+    host.querySelector('.rm2').onclick=function(){ host.remove(); removePerson(id); };
+    nm.onkeydown=function(e){ if(e.key==='Enter') apply(); if(e.key==='Escape') host.remove(); };
+  }
+
+
+  // ---------------- right-click menu (2026-08-31) ----------------
+  function closeMenu(){ var m=document.getElementById('pmenu'); if(m) m.remove(); }
+  function addChildOf(pid){
+    // A child of the DECEDENT is a descendant in his own right; a child of
+    // anyone else takes THROUGH that person, so it is a representation node.
+    var par=null; P.forEach(function(q){ if(q.id===pid) par=q; });
+    var role = (pid==='__DEC__') ? 'child'
+             : (par && par.cls==='sib') ? 'sibdesc'
+             : 'gk';
+    addPerson('New person', role, pid==='__DEC__'?null:pid);
+    var added=P[P.length-1];
+    if(added) setTimeout(function(){
+      var g=document.querySelector('#diagbox g.pn[data-p="'+added.id+'"]');
+      var r=g?g.getBoundingClientRect():null;
+      openEditor(added.id, r?r.left+r.width/2:window.innerWidth/2, r?r.bottom:120);
+    },60);
+  }
+  function openContext(id, x, y){
+    closeMenu();
+    var pp=null; P.forEach(function(q){ if(q.id===id) pp=q; });
+    var isDec = (id==='__DEC__');
+    var m=document.createElement('div'); m.id='pmenu'; m.className='pmenu';
+    function row(label,fn,cls){ return {label:label,fn:fn,cls:cls||''}; }
+    var items=[];
+    items.push({head: isDec ? 'THE DECEDENT' : (pp?pp.label:'')});
+    if(!isDec){
+      items.push(row('&#9679; Alive', function(){ st[id]=0; }, st[id]===0?'on':''));
+      items.push(row('&#9679; Died BEFORE &rarr; representation', function(){ st[id]=1; }, st[id]===1?'on':''));
+      items.push(row('&#9679; Died AFTER &rarr; transmission', function(){ st[id]=2; }, st[id]===2?'on':''));
+      items.push({sep:1});
+      items.push(row('\u2642 Male', function(){ pp.sex='m'; }, pp&&pp.sex==='m'?'on':''));
+      items.push(row('\u2640 Female', function(){ pp.sex='f'; }, pp&&pp.sex==='f'?'on':''));
+      items.push(row('Sex not stated', function(){ pp.sex=''; }, pp&&!pp.sex?'on':''));
+      items.push({sep:1});
+    }
+    items.push(row('&#43; Add child of this person', function(){ addChildOf(id); }, 'act'));
+    if(!isDec){
+      items.push(row('&#9998; Rename / edit\u2026', function(){ openEditor(id,x,y); }, 'act'));
+      items.push({sep:1});
+      items.push(row('&#10005; Remove from tree', function(){ removePerson(id); }, 'danger'));
+    }
+    m.innerHTML = items.map(function(it){
+      if(it.head) return '<div class="mh">'+esc(it.head)+'</div>';
+      if(it.sep)  return '<div class="ms"></div>';
+      return '<button class="mi '+it.cls+'">'+it.label+'</button>';
+    }).join('');
+    document.body.appendChild(m);
+    var btns=m.querySelectorAll('button.mi'), bi=0;
+    items.forEach(function(it){
+      if(it.head||it.sep) return;
+      var b=btns[bi++];
+      b.onclick=function(ev){
+        ev.stopPropagation(); closeMenu();
+        var deferred = /Add child|Rename|Remove/.test(b.textContent);
+        it.fn();
+        if(!deferred){ cur=null; if(quiz) revealed=false; render(); }
+      };
+    });
+    var r=m.getBoundingClientRect();
+    m.style.left=Math.max(6,Math.min(x, window.innerWidth-r.width-6))+'px';
+    m.style.top =Math.max(6,Math.min(y, window.innerHeight-r.height-6))+'px';
+  }
+  document.addEventListener('click',closeMenu);
+  document.addEventListener('scroll',closeMenu,{passive:true});
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeMenu(); });
+
+
+  function renderLadder(){
+    // The ladder IS the reasoning: the Code walks classes of heir in order and
+    // stops at the first one with somebody in it. Showing it beside the tree
+    // means you read WHY, not just who.
+    var el=document.getElementById('ladder'); if(!el) return;
+    var r; try{ r=compute(); }catch(e){ el.innerHTML=''; return; }
+    var rows=r.steps||[], hitAt=-1;
+    rows.forEach(function(x,i){ if(x.hit && hitAt<0) hitAt=i; });
+    el.innerHTML='<p class="lh">The ladder \u00b7 '+(prop==='community'?'community property':'separate property')+'</p>'+
+      rows.map(function(x,i){
+        var cls='lr'+((hitAt<0||i<=hitAt)?' reached':'')+(x.hit?' hit':'');
+        return '<div class="'+cls+'">'+
+          '<span class="la">'+esc(x.art||'')+'</span>'+
+          '<span class="lt">'+x.t+
+            (x.hit?'<span class="stop">\u2190 the answer stops here</span>'
+                  :(i<hitAt||hitAt<0?'<span class="empty"> — nobody on this rung</span>':''))+
+          '</span></div>';
+      }).join('') +
+      '<p class="lh" style="margin-top:12px">Right-click anyone in the tree for all options</p>';
+  }
+
+  // ---------------- render ----------------
+  function render(){
+    var t=document.getElementById('tree'); t.innerHTML='';
+    GENS.forEach(function(g){
+      var mem=g.ids.map(function(id){ var f=null; P.forEach(function(q){ if(q.id===id) f=q; }); return f; })
+                   .filter(Boolean);
+      if(!mem.length) return;
+      var d=document.createElement('div'); d.className='tier';
+      d.innerHTML='<div class="tlab">'+g.lab+'</div>';
+      var r=document.createElement('div'); r.className='row';
+      if(g.dec){
+        var dd=document.createElement('span'); dd.className='dec'; dd.textContent='◆ DECEDENT'; r.appendChild(dd);
+      }
+      mem.forEach(function(p){
+        var b=document.createElement('button');
+        b.className='p'; b.setAttribute('data-s', st[p.id]);
+        var sub;
+        if(st[p.id]===0){ sub='<span class="tag">'+(p.tag||'alive')+'</span>'; }
+        else if(st[p.id]===1){ sub='<span class="tag">died BEFORE <span class="flip" data-f="'+p.id+'">&rarr; after</span></span>'; }
+        else { sub='<span class="tag">died AFTER <span class="flip" data-f="'+p.id+'">&rarr; before</span></span>'; }
+        b.innerHTML=p.label+sub+'<span class="rm" data-r="'+p.id+'" title="remove '+p.label+' from the tree">&#10005;</span>';
+        b.title = st[p.id]===0 ? 'click to kill '+p.label : 'click to revive '+p.label;
+        b.onclick=function(e){
+          if(e.target && e.target.classList && e.target.classList.contains('rm')){
+            e.stopPropagation(); removePerson(p.id); return;
+          }
+          if(e.target && e.target.classList && e.target.classList.contains('flip')){
+            st[p.id] = (st[p.id]===1) ? 2 : 1;
+          } else {
+            st[p.id] = (st[p.id]===0) ? 1 : 0;
+          }
+          cur=null; if(quiz) revealed=false; render();
+        };
+        r.appendChild(b);
+      });
+      var ab=document.createElement('button'); ab.className='addp'; ab.textContent='+ add person';
+      ab.onclick=function(){ openAddForm(d); };
+      r.appendChild(ab);
+      d.appendChild(r); t.appendChild(d);
+    });
+
+    var pc=document.getElementById('peoplecnt');
+    if(pc){ var alive=0; P.forEach(function(q){ if(st[q.id]===0) alive++; });
+            pc.textContent = P.length+' people · '+alive+' alive'; }
+    var mn=document.getElementById('modelnow');
+    if(mn && MODELS[MODEL]) mn.textContent = MODELS[MODEL].name;
+    document.getElementById('willsel').classList.toggle('hidden', prop!=='community');
+    document.getElementById('hint').innerHTML = (prop==='community')
+      ? 'Community property has <b>only two rungs</b>.'
+      : 'Separate property runs <b>five rungs, then the State</b>.';
+
+    var show = !quiz || revealed;
+    var lb=document.getElementById('lessonbox');
+    lb.innerHTML = (cur&&cur.t&&show) ? '<div class="lesson"><b class="k">'+cur.k+'</b>'+cur.t+'</div>' : '';
+    document.getElementById('cover').classList.toggle('hidden', show);
+    document.getElementById('answer').classList.toggle('hidden', !show);
+    document.getElementById('reveal').classList.toggle('hidden', !quiz||revealed);
+    drawDiagram();
+    try{ renderLadder(); }catch(e){}
+    if(!show) return;
+
+    var r2=compute();
+    document.getElementById('verdict').innerHTML=r2.verdict;
+    document.getElementById('takers').innerHTML = r2.takers.length
+      ? r2.takers.map(function(x){return '<div class="take '+(x.cls||'')+'"><b>'+x.who+'</b> — '+x.what+
+          '<span class="art">art. '+x.art+'</span></div>';}).join('')
+      : '<div class="take" style="background:var(--code);border-left-color:var(--rule)"><i>Nobody takes on these facts.</i></div>';
+    document.getElementById('steps').innerHTML=r2.steps.map(function(s){
+      return '<li class="'+(s.hit?'hit':'')+'">'+(s.hit?'→ ':'')+s.t+'<span class="a">'+s.art+'</span>'+(s.hit?'':' — <i>empty</i>')+'</li>';}).join('');
+    document.getElementById('notes').innerHTML=r2.notes.map(function(n){return '<div class="flag">'+n+'</div>';}).join('');
+  }
+
+  function syncSegs(){
+    [].forEach.call(document.getElementById('propsel').children,function(x){x.classList.toggle('on',x.dataset.prop===prop);});
+    [].forEach.call(document.getElementById('willsel').children,function(x){x.classList.toggle('on',x.dataset.will===will);});
+  }
+  function load(sc){
+    P.forEach(function(p){ st[p.id]= (sc.s[p.id]===undefined) ? 1 : sc.s[p.id]; });
+    prop=sc.prop||'separate'; will=sc.will||'no'; cur=sc; revealed=false;
+    syncSegs();
+    [].forEach.call(document.getElementById('scen').children,function(x){x.classList.toggle('on',x.__sc===sc);});
+    render();
+  }
+  document.getElementById('propsel').onclick=function(e){
+    var b=e.target.closest?e.target.closest('button[data-prop]'):null; if(!b) return;
+    prop=b.dataset.prop; if(quiz) revealed=false; syncSegs(); render(); };
+  document.getElementById('willsel').onclick=function(e){
+    var b=e.target.closest?e.target.closest('button[data-will]'):null; if(!b) return;
+    will=b.dataset.will; if(quiz) revealed=false; syncSegs(); render(); };
+  var scEl=document.getElementById('scen');
+  function buildScenarios(){
+    scEl.innerHTML='';
+    SCEN.forEach(function(sc){
+      var b=document.createElement('button'); b.className='sc'; b.__sc=sc;
+      b.innerHTML=sc.n+'<span class="n">'+sc.k+'</span>';
+      b.onclick=function(){ load(sc); }; scEl.appendChild(b); });
+  }
+  document.getElementById('quizToggle').onclick=function(){
+    quiz=!quiz; revealed=false;
+    this.textContent=quiz?'Quiz mode: ON':'Quiz me'; this.classList.toggle('ghost',!quiz);
+    document.getElementById('quizmsg').innerHTML=quiz?'Answers hidden — decide out loud, then reveal.':'';
+    render(); };
+  document.getElementById('reveal').onclick=function(){ revealed=true; render(); };
+  document.getElementById('allAlive').onclick=function(){
+    P.forEach(function(p){ st[p.id]=0; }); cur=null; revealed=false;
+    [].forEach.call(scEl.children,function(x){x.classList.remove('on');}); render(); };
+  document.getElementById('allDead').onclick=function(){
+    P.forEach(function(p){ st[p.id]=1; }); cur=null; revealed=false;
+    [].forEach.call(scEl.children,function(x){x.classList.remove('on');}); render(); };
+  document.getElementById('random').onclick=function(){
+    var pool=P.map(function(p){return p.id;});
+    P.forEach(function(p){ st[p.id]=1; });
+    var n=1+Math.floor(Math.random()*5);
+    for(var i=0;i<n;i++){ st[pool[Math.floor(Math.random()*pool.length)]]=Math.random()<0.75?0:2; }
+    prop=Math.random()<0.35?'community':'separate'; will='no'; syncSegs();
+    [].forEach.call(scEl.children,function(x){x.classList.remove('on');});
+    cur=null; revealed=false; render(); };
+
+  MODELS.generic.P=GEN_P; MODELS.generic.GENS=GEN_GENS;
+  MODELS.generic.LINKS=GEN_LINKS; MODELS.generic.SCEN=GEN_SCEN;
+  var mb=document.getElementById('models');
+  Object.keys(MODELS).forEach(function(k){
+    var b=document.createElement('button'); b.className='tab'; b.textContent=MODELS[k].name; b.__m=k;
+    b.onclick=function(){ useModel(k); };
+    mb.appendChild(b);
+  });
+  document.getElementById('modelhint').innerHTML =
+    'Switch the cast, keep the engine. <b>Xavier — Quiz 2</b> loads the exact fact pattern from his quiz, with each question as a scenario.';
+  useModel('generic');
+
+  // Printing a folded <details> prints nothing inside it. Open them all for
+  // the print, then put them back exactly as the reader had them.
+  var reclose=[];
+  window.addEventListener('beforeprint',function(){
+    reclose=[];
+    [].forEach.call(document.querySelectorAll('details.card'),function(d){
+      if(!d.open){ reclose.push(d); d.open=true; } });
+  });
+  window.addEventListener('afterprint',function(){
+    reclose.forEach(function(d){ d.open=false; }); reclose=[];
+  });
+})();
+</script>
+
+<div id="tip">
+
+
+
+
+
+</div>
+<script>
+(function(){
+  var T=[
+   ["representation","Representation · arts. 881–885","“A FICTION OF THE LAW, the effect of which is to put the representative IN THE PLACE, DEGREE, AND RIGHTS of the person represented.” Applies when the heir DIED BEFORE the decedent and has descendants. Fenced: descendants and siblings only."],
+   ["transmission","Transmission · art. 937","“The rights of a successor are transmitted to his own successors at his death, WHETHER OR NOT HE ACCEPTED THE RIGHTS, AND WHETHER OR NOT HE KNEW that the rights accrued to him.” Applies when the heir DIED AFTER the decedent. No fiction, so NO LIMITATION — any heir or legatee."],
+   ["by roots","By roots · art. 885","“In all cases in which representation is permitted, THE PARTITION IS MADE BY ROOTS; if one root has produced several branches, the subdivision is also made by roots in each branch, and the members of the same branch TAKE BY HEADS.” The branch keeps the dead person's share and divides it internally."],
+   ["by heads","By heads","Each surviving taker counts as one and they divide equally. The DEFAULT under art. 888 for descendants in the same degree — and the WRONG answer whenever representation applies."],
+   ["ad infinitum","Ad infinitum · art. 882","In the DIRECT LINE representation runs without limit — great-grandchildren and beyond. It governs how far DOWN representatives may sit, not WHO may be represented."],
+   ["naked ownership","Naked ownership","Ownership stripped of use and enjoyment. Under art. 890 the descendants hold naked ownership while the surviving spouse holds the usufruct."],
+   ["usufruct","Usufruct · art. 535","“A real right of limited duration on the property of another.” Usus + fructus. Art. 890's spousal usufruct ends when the survivor DIES OR REMARRIES, whichever first."],
+   ["suspensive","Suspensive · art. 1767","The obligation MAY NOT BE ENFORCED UNTIL the uncertain event occurs."],
+   ["seizin","Seizin · art. 935","“IMMEDIATELY at the death of the decedent, universal successors acquire ownership of the estate.” This is WHY transmission works — the rights had already vested."],
+   ["half-blood","Half blood · art. 893","Siblings of different unions: the estate splits half to the maternal line and half to the paternal; FULL-BLOOD siblings take IN BOTH LINES, half-blood only in their own."],
+   ["full ownership","Full ownership","Both naked ownership and usufruct in the same person — nothing carved out."],
+   ["degree","Degree · arts. 900–901","Each generation is a degree. DIRECT line: generations between heir and deceased. COLLATERAL: up to the common ancestor PLUS back down. Sibling 2 · niece/uncle 3 · first cousin 4."]
+  ];
+  var MAP={},alts=[];
+  T.forEach(function(t){ MAP[t[0].toLowerCase()]=[t[1],t[2]];
+    alts.push(t[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&')); });
+  var RX=new RegExp('\\b('+alts.join('|')+')\\b','gi');
+  var SKIP={SCRIPT:1,STYLE:1,H1:1,BUTTON:1,SVG:1,TEXT:1};
+  function walk(node){
+    if(node.nodeType===3){
+      var txt=node.nodeValue; if(!txt||!RX.test(txt)) return; RX.lastIndex=0;
+      var frag=document.createDocumentFragment(),last=0,m;
+      while((m=RX.exec(txt))!==null){
+        var k=m[0].toLowerCase(); if(!MAP[k]) continue;
+        if(m.index>last) frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+        var sp=document.createElement('span'); sp.className='dfn'; sp.textContent=m[0];
+        sp.setAttribute('data-h',MAP[k][0]); sp.setAttribute('data-d',MAP[k][1]);
+        frag.appendChild(sp); last=m.index+m[0].length;
+      }
+      if(!frag.childNodes.length) return;
+      if(last<txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+      node.parentNode.replaceChild(frag,node); return;
+    }
+    if(node.nodeType!==1) return;
+    if(SKIP[node.tagName]||SKIP[(node.tagName||'').toUpperCase()]) return;
+    if(node.classList&&node.classList.contains('dfn')) return;
+    [].slice.call(node.childNodes).forEach(walk);
+  }
+  function annotate(){
+    ['lessonbox','takers','steps','notes'].forEach(function(id){
+      var el=document.getElementById(id); if(el) walk(el); });
+    document.querySelectorAll('.dcap,.foot,header .sub').forEach(walk);
+  }
+  var tip=document.getElementById('tip');
+  function show(e){ var t=e.target; if(!t.classList||!t.classList.contains('dfn')) return;
+    tip.innerHTML='<b class="h">'+t.getAttribute('data-h')+'</b>'+t.getAttribute('data-d');
+    tip.style.display='block';
+    var r=t.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
+    tip.style.left=Math.min(Math.max(8,r.left),window.innerWidth-w-8)+'px';
+    var y=r.top-h-10; tip.style.top=(y<8?r.bottom+10:y)+'px'; }
+  function hide(){ tip.style.display='none'; }
+  document.addEventListener('mouseover',show);
+  document.addEventListener('mouseout',function(e){ if(e.target.classList&&e.target.classList.contains('dfn')) hide(); });
+  document.addEventListener('click',function(e){ if(e.target.classList&&e.target.classList.contains('dfn')) show(e); else hide(); });
+  document.addEventListener('scroll',hide,true);
+  annotate();
+  new MutationObserver(function(){ annotate(); }).observe(document.getElementById('takers'),{childList:true});
+  new MutationObserver(function(){ annotate(); }).observe(document.getElementById('notes'),{childList:true});
+  new MutationObserver(function(){ annotate(); }).observe(document.getElementById('lessonbox'),{childList:true});
+})();
+</script>
+
+
+<script>
+/* ---------- PNG export + print (added 2026-08-31) ----------------------------
+   The tree is inline SVG, so exporting it is: clone it, give it real pixel
+   dimensions and a solid background (a transparent PNG is useless on a white
+   slide), inline the font so the labels don't fall back, rasterise at 2x, and
+   hand the browser a blob to download.
+
+   Why an explicit background rect: the SVG inherits the page background from
+   CSS, which does not travel with the serialised markup. Without it the export
+   is transparent and every label vanishes against a light slide.
+
+   Why 2x: this gets projected. 1x looks soft on a lecture-hall screen.        */
+(function(){
+  function currentSvg(){
+    var box = document.getElementById('diagbox');
+    return box ? box.querySelector('svg') : null;
+  }
+  function scenarioName(){
+    var cap = document.getElementById('diagcap');
+    var t = (cap && cap.textContent || 'devolution-tree').trim();
+    return (t.split(/[.\u2014\u2013]/)[0] || 'devolution-tree')
+             .replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,60).toLowerCase()
+           || 'devolution-tree';
+  }
+  function factsSummary(){
+    // A tree image with no facts on it is ambiguous a week later: you cannot
+    // tell separate from community, or who died before vs after. So the export
+    // carries the facts AND the result, not just the picture.
+    var out=[];
+    try{ if(MODELS[MODEL]) out.push(MODELS[MODEL].name); }catch(e){}
+    var v=document.getElementById('verdict');
+    if(v && v.textContent.trim()) out.push(v.textContent.trim());
+    try{
+      var bef=[],aft=[],alive=0;
+      P.forEach(function(q){
+        if(st[q.id]===0) alive++;
+        else if(st[q.id]===1) bef.push(q.label);
+        else if(st[q.id]===2) aft.push(q.label);
+      });
+      out.push(alive+' of '+P.length+' alive');
+      if(bef.length) out.push('died BEFORE: '+bef.join(', '));
+      if(aft.length) out.push('died AFTER: '+aft.join(', '));
+    }catch(e){}
+    return out;
+  }
+  function takersList(){
+    var rows=[];
+    [].forEach.call(document.querySelectorAll('#takers .take'),function(d){
+      var art=d.querySelector('.art');
+      var a=art?art.textContent.trim():'';
+      var txt=d.textContent.replace(a,'').replace(/\s+/g,' ').trim();
+      rows.push({t:txt,a:a});
+    });
+    return rows;
+  }
+  function exportPng(){
+    var svg=currentSvg();
+    if(!svg){ alert('No tree on screen yet — pick a scenario first.'); return; }
+    var vb=(svg.getAttribute('viewBox')||'0 0 720 400').split(/\s+/);
+    var w=parseFloat(vb[2])||720, h=parseFloat(vb[3])||400, S=2;
+
+    // Force LIGHT for the export. Computed styles are read off the live page,
+    // so a reader in dark mode would otherwise export a black tree with dark
+    // boxes — fine on screen, useless as a handout or on a projector.
+    var root=document.documentElement, hadTheme=root.getAttribute('data-theme');
+    root.setAttribute('data-theme','light');
+    void root.offsetWidth;                       // force the restyle to land
+
+    var clone=svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    clone.setAttribute('width',w); clone.setAttribute('height',h);
+    // Inline COMPUTED styles: a serialised SVG carries no stylesheet, so every
+    // var(--x) would collapse and the tree would export as solid black boxes.
+    var PROPS=['fill','fill-opacity','stroke','stroke-width','stroke-linecap','stroke-linejoin',
+               'stroke-dasharray','opacity','color','font-family','font-size','font-weight',
+               'font-style','text-anchor','dominant-baseline','letter-spacing'];
+    var sa=svg.querySelectorAll('*'), da=clone.querySelectorAll('*');
+    function inl(a,b){ var cs=window.getComputedStyle(a);
+      for(var i=0;i<PROPS.length;i++){ var v=cs.getPropertyValue(PROPS[i]);
+        if(v&&v!=='none'&&v!=='normal'&&v!=='auto') b.setAttribute(PROPS[i],v.trim());
+        else if(v==='none'&&(PROPS[i]==='fill'||PROPS[i]==='stroke')) b.setAttribute(PROPS[i],'none'); } }
+    inl(svg,clone);
+    for(var i=0;i<sa.length&&i<da.length;i++) inl(sa[i],da[i]);
+
+    // The white ground goes in AFTER the style pass. Inserting it first adds an
+    // element to the clone that has no partner in the original, so every node
+    // receives the previous node's styles — the background itself came out the
+    // dark panel colour and the whole tree exported black. Off-by-one, measured.
+    var bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bg.setAttribute('x',vb[0]||0); bg.setAttribute('y',vb[1]||0);
+    bg.setAttribute('width',w); bg.setAttribute('height',h); bg.setAttribute('fill','#ffffff');
+    clone.insertBefore(bg,clone.firstChild);
+
+    var facts=factsSummary(), takers=takersList();
+    if(hadTheme) root.setAttribute('data-theme',hadTheme); else root.removeAttribute('data-theme');
+
+    var img=new Image();
+    img.onload=function(){
+      var PAD=30, FW=Math.max(w, 620);
+      var c=document.createElement('canvas'), ctx=c.getContext('2d');
+      var SANS='ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+
+      // measure the wrapped blocks first so the canvas is exactly tall enough
+      function wrap(text,maxw,font){
+        ctx.font=font; var words=text.split(' '), lines=[], cur='';
+        words.forEach(function(wd){ var t=cur?cur+' '+wd:wd;
+          if(ctx.measureText(t).width>maxw && cur){ lines.push(cur); cur=wd; } else cur=t; });
+        if(cur) lines.push(cur); return lines;
+      }
+      c.width=10; c.height=10;                      // temp, for measuring
+      var innerW=FW-PAD*2;
+      var factLines=wrap(facts.join('  ·  '), innerW, '600 14px '+SANS);
+      var headH = 34 + 20 + factLines.length*20 + 14;
+      var takeH = takers.length ? (26 + takers.length*24 + 10) : 26;
+      var H = headH + h + takeH + 26;
+
+      c.width=Math.round(FW*S); c.height=Math.round(H*S);
+      ctx=c.getContext('2d'); ctx.scale(S,S);
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,FW,H);
+      ctx.textBaseline='alphabetic';
+
+      var y=PAD;
+      ctx.fillStyle='#14110d'; ctx.font='700 20px '+SANS;
+      ctx.fillText('Devolution — who takes', PAD, y+6); y+=26;
+      ctx.fillStyle='#6b6255'; ctx.font='500 12px '+SANS;
+      ctx.fillText('LCIV-L715 Successions & Donations · '+new Date().toLocaleDateString(), PAD, y+4); y+=20;
+
+      ctx.fillStyle='#14110d'; ctx.font='600 14px '+SANS;
+      factLines.forEach(function(L){ ctx.fillText(L,PAD,y+8); y+=20; });
+      y+=6;
+      ctx.strokeStyle='#e2dbcd'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(FW-PAD,y); ctx.stroke(); y+=8;
+
+      ctx.drawImage(img,(FW-w)/2,y,w,h); y+=h+16;
+
+      ctx.strokeStyle='#e2dbcd'; ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(FW-PAD,y); ctx.stroke(); y+=20;
+      ctx.fillStyle='#1f4d3f'; ctx.font='700 12px '+SANS;
+      ctx.fillText('WHO TAKES', PAD, y); y+=20;
+      if(takers.length){
+        ctx.font='600 14px '+SANS;
+        takers.forEach(function(r){
+          ctx.fillStyle='#14110d'; ctx.fillText(r.t, PAD, y);
+          if(r.a){ ctx.fillStyle='#8c2d19'; ctx.font='600 12px '+SANS;
+                   ctx.fillText(r.a, FW-PAD-ctx.measureText(r.a).width, y);
+                   ctx.font='600 14px '+SANS; }
+          y+=24;
+        });
+      } else { ctx.fillStyle='#6b6255'; ctx.font='400 14px '+SANS;
+               ctx.fillText('Nobody takes on these facts.', PAD, y); }
+
+      c.toBlob(function(blob){
+        if(!blob){ alert('Could not render the PNG.'); return; }
+        var a=document.createElement('a'), href=URL.createObjectURL(blob);
+        a.href=href; a.download='devolution-'+scenarioName()+'.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(href); },1000);
+      },'image/png');
+    };
+    img.onerror=function(){ alert('Could not rasterise the tree.'); };
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  }
+
+  ['savePng','savePngTop','pngFab'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b) b.addEventListener('click', exportPng);
+  });
+  ['printAll','printAllTop','pdfFab'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b) b.addEventListener('click', function(){ window.print(); });
+  });
+})();
+</script>
+
+<script>
+/* theme picker — palette (data-skin) and light/dark (data-theme), both remembered */
+(function(){
+  var root=document.documentElement, LSK='l715skin', LMD='l715mode';
+  function applySkin(v){ if(v) root.setAttribute('data-skin',v); else root.removeAttribute('data-skin');
+    [].forEach.call(document.querySelectorAll('.skins button[data-skin]'),function(b){
+      b.classList.toggle('on',(b.getAttribute('data-skin')||'')===(v||'')); }); }
+  function applyMode(m){
+    if(m==='light'||m==='dark') root.setAttribute('data-theme',m); else root.removeAttribute('data-theme');
+    var b=document.getElementById('modeBtn');
+    if(b) b.textContent = m==='light'?'Light':(m==='dark'?'Dark':'Auto');
+  }
+  var skin='', mode='auto';
+  try{ skin=localStorage.getItem(LSK)||''; mode=localStorage.getItem(LMD)||'auto'; }catch(e){}
+  applySkin(skin); applyMode(mode);
+  [].forEach.call(document.querySelectorAll('.skins button[data-skin]'),function(b){
+    b.onclick=function(){ var v=b.getAttribute('data-skin')||'';
+      applySkin(v); try{localStorage.setItem(LSK,v);}catch(e){} };
+  });
+  var mb=document.getElementById('modeBtn');
+  if(mb) mb.onclick=function(){
+    mode = mode==='auto'?'light':(mode==='light'?'dark':'auto');
+    applyMode(mode); try{localStorage.setItem(LMD,mode);}catch(e){}
+  };
+})();
+</script>
+
+
+<script>
+/* Focus mode: diagram first, controls in a drawer. Remembered per reader. */
+(function(){
+  var b=document.body, LS='l715focus';
+  function setFocus(on){
+    b.classList.toggle('focus',on);
+    if(!on) b.classList.remove('drawer');
+    var f=document.getElementById('focusBtn');
+    if(f) f.textContent = on ? 'Full page' : 'Focus diagram';
+    try{ localStorage.setItem(LS, on?'1':'0'); }catch(e){}
+    window.dispatchEvent(new Event('resize'));
+  }
+  // In focus mode the masthead is hidden, so the legend and the theme picker
+  // move into the drawer rather than disappearing with it.
+  var col=document.getElementById('ctlcol');
+  if(col){
+    var lg=document.querySelector('.legend'), sk=document.querySelector('.skins'), qb=document.querySelector('.quizbar');
+    if(qb) col.insertBefore(qb, col.firstChild);
+    if(sk) col.insertBefore(sk, col.firstChild);
+    if(lg) col.insertBefore(lg, col.firstChild);
+  }
+  var on=true; try{ var v=localStorage.getItem(LS); if(v!==null) on=(v==='1'); }catch(e){}
+  setFocus(on);
+
+  function drawer(open){ b.classList.toggle('drawer',open); }
+  var cb=document.getElementById('ctlBtn'); if(cb) cb.onclick=function(){ drawer(!b.classList.contains('drawer')); };
+  var sc=document.getElementById('scrim'); if(sc) sc.onclick=function(){ drawer(false); };
+  var dc=document.getElementById('drawerClose'); if(dc) dc.onclick=function(){ drawer(false); };
+  var fb=document.getElementById('focusBtn'); if(fb) fb.onclick=function(){ setFocus(!b.classList.contains('focus')); };
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') drawer(false);
+    if(e.key.toLowerCase()==='c' && !/input|textarea|select/i.test((e.target.tagName||''))) drawer(!b.classList.contains('drawer'));
+  });
+  // Clicking a person inside the drawer should let you SEE the result, so the
+  // drawer closes itself on a chip click when the viewport is narrow.
+  document.addEventListener('click',function(e){
+    if(!b.classList.contains('drawer')) return;
+    var chip=e.target.closest && e.target.closest('button.p');
+    if(chip && window.innerWidth<820) drawer(false);
+  });
+})();
+</script>
+<!-- STUDYKIT:BEGIN — generated by _lib/enrich.py; do not hand-edit -->
+<style>
+  /* STUDYKIT — article citations and defined terms.
+     Colour comes from whatever the host page already defines, so the kit
+     inherits each page's palette instead of fighting it. */
+  :root{ --sk: var(--indigo, var(--claret, var(--accent, #8E2437))); }
+  .sk-art,.sk-dfn{font-weight:700;color:var(--sk);cursor:help;text-decoration:none}
+  .sk-art{border-bottom:2px dotted var(--sk);white-space:nowrap}
+  .sk-dfn{border-bottom:1px dotted var(--sk)}
+  .sk-art:hover,.sk-dfn:hover,.sk-art:focus-visible,.sk-dfn:focus-visible{
+    background:color-mix(in srgb, var(--sk) 12%, transparent);outline:none}
+  .sk-art:focus-visible,.sk-dfn:focus-visible{outline:2px solid var(--sk);outline-offset:2px}
+  .sk-art.sk-miss{color:var(--ink-soft,#666);border-bottom-color:var(--rule,#ccc);cursor:default}
+  #skTip{position:fixed;z-index:9999;max-width:26rem;
+    background:var(--surface,#fff);color:var(--ink,#111);
+    border:1px solid var(--sk);border-left:3px solid var(--sk);border-radius:4px;
+    padding:.85rem 1rem;box-shadow:0 10px 30px -8px rgba(0,0,0,.35);
+    display:none;pointer-events:none;font-size:.9rem;line-height:1.55;
+    font-family:"Public Sans",ui-sans-serif,system-ui,sans-serif}
+  #skTip .k{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--sk);margin-bottom:.3rem}
+  #skTip .t{display:block;font-weight:700;font-size:.8rem;margin-bottom:.45rem}
+  #skTip .d{margin:0;font-family:Spectral,Georgia,serif;font-size:.95rem}
+  #skTip .s{display:block;margin-top:.55rem;padding-top:.45rem;
+    border-top:1px solid var(--rule-soft,#eee);
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;
+    color:var(--ink-faint,#888)}
+  @media print{.sk-art,.sk-dfn{border-bottom:none;color:inherit}#skTip{display:none!important}}
+</style>
+<div id="skTip" role="tooltip" aria-hidden="true"></div>
+<script>
+(function(){
+  var ARTS = {"1514":{"h":"Usufruct of surviving spouse affecting legitime; security","b":"A forced heir may request security when a usufruct in favor of a surviving spouse affects his legitime and he is not a child of the surviving spouse. A forced heir may also request security to the extent that a surviving spouse's usufruct over the legitime affects separate property. The court may order the execution of notes, mortgages, or other documents as it deems necessary, or may impose a mortgage or lien on either community or separate property, movable or immovable, as security."},"1767":{"h":"Suspensive and resolutory condition","b":"A conditional obligation is one dependent on an uncertain event. If the obligation may not be enforced until the uncertain event occurs, the condition is suspensive. If the obligation may be immediately enforced but will come to an end when the uncertain event occurs, the condition is resolutory."},"178":{"h":"Definition","b":"Filiation is the legal relationship between a child and his parent."},"179":{"h":"Establishment of filiation","b":"Filiation is established by proof of maternity or paternity or by adoption."},"184":{"h":"Maternity","b":"Maternity may be established by a preponderance of the evidence that the child was born of a particular woman, except as otherwise provided by law."},"185":{"h":"Presumption of paternity of husband","b":"The husband of the mother is presumed to be the father of a child born during the marriage or within three hundred days from the date of the termination of the marriage."},"186":{"h":"Presumption if child is born after divorce or after death of husband; effect of disavowal","b":"If a child is born within three hundred days from the day of the termination of a marriage and his mother has married again before his birth, the first husband is presumed to be the father. If the first husband, or his successor, obtains a judgment of disavowal of paternity of the child, the second husband is presumed to be the father. The second husband, or his successor, may disavow paternity if he institutes a disavowal action within a peremptive period of one year from the day that the judgment of disavowal obtained by the first husband is final and definitive."},"187":{"h":"Disavowal action; proof","b":"The husband may disavow paternity of the child by clear and convincing evidence that he is not the father. The testimony of the husband shall be corroborated by other evidence."},"190":{"h":"Time limit for disavowal by heir or legatee","b":"If the prescription has commenced to run and the husband dies before the prescription has accrued, his successor whose interest is adversely affected may institute an action for disavowal of paternity. The action of the successor is subject to a liberative prescription of one year. This prescription commences to run from the day of the death of the husband. If the prescription has not yet commenced to run, the action of the successor is subject to a liberative prescription of one year. This prescription commences to run from the day the successor is notified in writing that a party in interest has asserted that the husband is the father of the child."},"190.1":{"h":"Three-party acknowledgment; alternative to disavowal; time period","b":"If blood or tissue sampling indicates by a ninety-nine and nine-tenths percentage point threshold probability that the biological father is the father of the child and he is not the husband or former husband presumed to be the father of the child, then the husband or former husband presumed to be the father of the child, the mother, and the biological father of the child may execute a three-party acknowledgment in authentic form declaring that the husband or former husband is not the father of the child and that the biological father is the father of the child. When a three-party acknowledgment is executed, the husband or former husband is not presumed to be the father of the child. The biological father who has acknowledged the child by three-party acknowledgment is presumed to be the father of the child. To have effect, this acknowledgment shall be executed no later than ten years from the day of the birth of the child but never more than one year from the day of the death of the child. These time periods are peremptive."},"191":{"h":"Contestation and establishment of paternity by mother","b":"The mother of a child may institute an action to establish both that her former husband is not the father of the child and that her present husband is the father. This action may be instituted only if the present husband has acknowledged the child by authentic act."},"193":{"h":"Contestation and establishment of paternity; time period","b":"The action by the mother shall be instituted within a peremptive period of one hundred eighty days from the marriage to her present husband and also within two years from the day of the birth of the child, except as may otherwise be provided by law."},"195":{"h":"Presumption by marriage and acknowledgment","b":"; child not filiated to another man; proof; time period A man who marries the mother of a child not filiated to another man and who, with the concurrence of the mother, acknowledges the child by authentic act is presumed to be the father of that child. The husband may disavow paternity of the child as provided in Article 187. Revocation of the authentic act of acknowledgment alone is not sufficient to rebut the presumption of paternity created by this Article. The action for disavowal is subject to a peremptive period of one hundred eighty days. This peremptive period commences to run from the day of the marriage or the acknowledgment, whichever occurs later."},"196":{"h":"Formal acknowledgment; presumption","b":"A man may, by authentic act, acknowledge a child not filiated to another man. The acknowledgment creates a presumption that the man who acknowledges the child is the father. The presumption can be invoked only on behalf of the child. Except as otherwise provided in custody, visitation, and child support cases, the acknowledgment does not create a presumption in favor of the man who acknowledges the child."},"197":{"h":"Child's action to establish paternity; proof; time period","b":"A child may institute an action to prove paternity even though he is presumed to be the child of another man. If the action is instituted after the death of the alleged father, a child shall prove paternity by clear and convincing evidence. For purposes of succession only, this action is subject to a peremptive period of one year. This peremptive period commences to run from the day of the death of the alleged father."},"198":{"h":"Father's action to establish paternity; time period","b":"A man may institute an action to establish his paternity of a child at any time except as provided in this Article. The action is strictly personal. If the child is presumed to be the child of another man, the action shall be instituted within one year from the day of the birth of the child. Nevertheless, if the mother in bad faith deceived the father of the child regarding his paternity, the action shall be instituted within one year from the day the father knew or should have known of his paternity, or within ten years from the day of the birth of the child, whichever first occurs. In all cases, the action shall be instituted no later than one year from the day of the death of the child. The time periods in this Article are peremptive."},"199":{"h":"Effect of adoption","b":"Upon adoption, the adopting parent becomes the parent of the child for all purposes and the filiation between the child and his legal parent is terminated, except as otherwise provided by law. The adopted child and his descendants retain the right to inherit from his former legal parent and the relatives of that parent."},"2336":{"h":"Ownership of community property","b":"Each spouse owns a present undivided one-half interest in the community property. Nevertheless, neither the community nor things of the community may be judicially partitioned prior to the termination of the regime. During the existence of the community property regime, the spouses may, without court approval, voluntarily partition the community property in whole or in part. In such a case, the things that each spouse acquires are separate property. The partition is effective toward third persons when filed for registry in the manner provided by Article 2332."},"535":{"h":"Usufruct","b":". Usufruct is a real right of limited duration on the property of another. The features of the right vary with the nature of the things subject to it as consumables or nonconsumables."},"880":{"h":"Intestate succession","b":"In the absence of valid testamentary disposition, the undisposed property of the deceased devolves by operation of law in favor of his descendants, ascendants, and collaterals, by blood or by adoption, and in favor of his spouse not judicially separated from him, in the order provided in and according to the following articles."},"881":{"h":"Representation: effect","b":"Representation is a fiction of the law, the effect of which is to put the representative in the place, degree, and rights of the person represented."},"882":{"h":"Representation in direct line of descendants","b":"Representation takes place ad infinitum in the direct line of descendants. It is permitted in all cases, whether the children of the deceased concur with the descendants of the predeceased child, or whether, all the children having died before him, the descendants of the children be in equal or unequal degrees of relationship to the deceased. For purposes of forced heirship, representation takes place only as provided in Article 1493."},"883":{"h":"Representation of ascendants not permissible","b":"Representation does not take place in favor of the ascendants, the nearest relation in any degree always excluding those of a more remote degree."},"884":{"h":"Representation in collateral line","b":"In the collateral line, representation is permitted in favor of the children and descendants of the brothers and sisters of the deceased, whether they succeed in concurrence with their uncles and aunts, or whether, the brothers and sisters of the deceased having died, their descendants succeed in equal or unequal degrees."},"885":{"h":"Basis of partition in cases of representation","b":"In all cases in which representation is permitted, the partition is made by roots; if one root has produced several branches, the subdivision is also made by roots in each branch, and the members of the same branch take by heads."},"888":{"h":"Succession rights of descendants","b":"Descendants succeed to the property of their ascendants. They take in equal portions and by heads if they are in the same degree. They take by roots if all or some of them succeed by representation."},"889":{"h":"Devolution of community property","b":"If the deceased leaves no descendants, his surviving spouse succeeds to his share of the community property."},"890":{"h":"Usufruct of surviving spouse","b":"If the deceased spouse is survived by descendants, the surviving spouse shall have a usufruct over the decedent's share of the community property to the extent that the decedent has not disposed of it by testament. This usufruct terminates when the surviving spouse dies or remarries, whichever occurs first."},"891":{"h":"Devolution of separate property; parents and brothers and sisters","b":"If the deceased leaves no descendants but is survived by a father, mother, or both, and by a brother or sister, or both, or descendants from them, the brothers and sisters or their descendants succeed to the separate property of the deceased subject to a usufruct in favor of the surviving parent or parents. If both parents survive the deceased, the usufruct shall be joint and successive."},"892":{"h":"92","b":"Devolution of separate property in absence of parents or in absence of brothers and sisters If the deceased leaves neither descendants nor parents, his brothers or sisters or descendants from them succeed to his separate property in full ownership to the exclusion of other ascendants and other collaterals. If the deceased leaves neither descendants nor brothers or sisters, nor descendants from them, his parent or parents succeed to the separate property to the exclusion of other ascendants and other collaterals."},"893":{"h":"Brothers and sisters related by half-blood","b":"The property that devolves to the brothers or sisters is divided among them equally, if they are all born of the same parents. If they are born of different unions, it is equally divided between the paternal and maternal lines of the deceased: brothers or sisters fully related by blood take in both lines and those related by half-blood take each in his own line. If there are brothers or sisters on one side only, they take the entirety to the exclusion of all relations in the other line."},"894":{"h":"Separate property; rights of surviving spouse","b":"If the deceased leaves neither descendants, nor parents, nor brothers, sisters, or descendants from them, his spouse not judicially separated from him shall succeed to his separate property to the exclusion of other ascendants and other collaterals."},"895":{"h":"Separate property; rights of other ascendants","b":"If a deceased leaves neither descendants, nor brothers, sisters, or descendants from them, nor parents, nor spouse not judicially separated, his other ascendants succeed to his separate property. If the ascendants in the paternal and maternal lines are in the same degree, the property is divided into two equal shares, one of which goes to the ascendants on the paternal side, and the other to the ascendants on the maternal side, whether the number of ascendants on each side be equal or not. In this case, the ascendants in each line inherit by heads. If there is in the nearest degree but one ascendant in the two lines, such ascendant excludes ascendants of a more remote degree."},"896":{"h":"Separate property; rights of other collaterals","b":"If the deceased leaves neither descendants, nor brothers, sisters, or descendants from them, nor parents, nor spouse not judicially separated, nor other ascendants, his other collaterals succeed to his separate property. Among the collateral relations, the nearest in degree excludes all the others. If there are several in the same degree, they take equally and by heads."},"900":{"h":"Degrees of relationship","b":"The propinquity of consanguinity is established by the number of generations, and each generation is called a degree."},"901":{"h":"Direct and collateral relationship","b":"The series of degrees forms the line. The direct line is the series of degrees between persons who descend one from another. The collateral line is the series of degrees between persons who do not descend one from another, but who descend from a common ancestor. In the direct line, the number of degrees is equal to the number of generations between the heir and the deceased. In the collateral line, the number of degrees is equal to the number of generations between the heir and the common ancestor, plus the number of generations between the common ancestor and the deceased."},"902":{"h":"Rights of the state","b":"In default of blood, adopted relations, or a spouse not judicially separated, the estate of the deceased belongs to the state."},"935":{"h":"Acquisition of ownership; seizin","b":"Immediately at the death of the decedent, universal successors acquire ownership of the estate and particular successors acquire ownership of the things bequeathed to them. Prior to the qualification of a succession representative only a universal successor may represent the decedent with respect to the heritable rights and obligations of the decedent."},"937":{"h":"Transmission of rights of successor","b":"The rights of a successor are transmitted to his own successors at his death, whether or not he accepted the rights, and whether or not he knew that the rights accrued to him."},"941":{"h":"Declaration of unworthiness","b":"A successor shall be declared unworthy if he is convicted of a crime involving the intentional killing, or attempted killing, of the decedent or is judicially determined to have participated in the intentional, unjustified killing, or attempted killing, of the decedent. An action to declare a successor unworthy shall be brought in the succession proceedings of the decedent. An executive pardon or pardon by operation of law does not affect the unworthiness of a successor."}};
+  var TERMS = [["clear and convincing","Clear and convincing evidence","The middle burden — higher than preponderance, lower than beyond reasonable doubt. The existence of the fact must be HIGHLY PROBABLE, i.e. “much more probable than its non-existence.” Required to prove paternity against a DEAD alleged father (art. 197)."],["collateral line","Collateral line · art. 884","Representation is permitted “IN FAVOR OF THE CHILDREN AND DESCENDANTS OF THE BROTHERS AND SISTERS of the deceased.” It stops there — a cousin cannot represent a predeceased uncle. That boundary is Succession of Aranyosi."],["representation","Representation · arts. 881-885","A FICTION OF LAW: where an heir predeceased the decedent, his own descendants step into his place and take FROM the decedent. Nothing ever vested in the predeceased heir. Fenced — available to descendants and siblings only."],["authentic act","Authentic act","A writing executed before a notary and two witnesses, signed by all. The Code's formal instrument — acknowledgment of a child under arts. 195-196 must take this form. Since 2016 signing a birth certificate is NOT enough."],["preponderance","Preponderance of the evidence","The ordinary civil burden — more likely than not. Enough to prove maternity (art. 184), and enough for the child's paternity action while the alleged father is ALIVE."],["ad infinitum","Ad infinitum · art. 882","In the DIRECT line representation runs without limit. It governs how far DOWN representatives may sit — NOT who may be represented."],["prescriptive","Prescriptive","Of a period: it bars the remedy but can be interrupted or suspended. Contrast PEREMPTIVE."],["transmission","Transmission · art. 937","Where an heir survives the decedent and then dies, the inheritance VESTED at the instant of the decedent's death and passes THROUGH that heir's own estate to his own successors. Open to anyone, because nothing is being pretended."],["direct line","Direct line · art. 882","Representation takes place AD INFINITUM in the direct line of descendants, “in all cases.”"],["forced heir","Forced heir","A descendant the law protects against disinherison — in Louisiana, children 23 or younger, or of any age if permanently incapable of caring for themselves. Chapter 5 material."],["ascendants","Ascendants · art. 883","“Representation DOES NOT TAKE PLACE in favor of the ascendants, the nearest relation in any degree always excluding those of a more remote degree.” Never, in any circumstance."],["collateral","Collaterals","Relatives who share an ancestor but are not in the direct line — brothers, sisters, nephews, cousins. Yvette Perry's claim in Perry v. Clay is a collateral one."],["devolution","Devolution","The passing of a decedent's property to his heirs by operation of law. Chapter 2 gives the basic rules; Chapter 3 is the complications to them."],["peremption","Peremption","A period that DESTROYS the right itself, not merely the remedy. It cannot be interrupted, suspended or renounced, and the court raises it on its own. When it runs out there is nothing left to revive — which is why Mr. Perry lost in Perry v. Clay even with corroboration."],["peremptive","Peremptive","Of a period: it kills the right when it expires. Cannot be interrupted, suspended or renounced — contrast PRESCRIPTIVE, which can. In Ch. 3 nearly every period that CREATES or REDIRECTS filiation is peremptive."],["disavowal","Disavowal action · art. 187","The husband's action to destroy the presumption that he fathered a child born during the marriage. Requires CLEAR AND CONVINCING evidence and, if he testifies, CORROBORATION. It is heritable, and its periods are prescriptive."],["filiation","Filiation · arts. 178-179","“The relationship that exists between a child and his parent.” Established by proof of MATERNITY, PATERNITY, or ADOPTION. It is what puts a person on the family tree at all — no filiation, no heir."],["intestate","Intestate · arts. 875, 880","Dying without a valid testamentary disposition, so property devolves BY OPERATION OF LAW to descendants, ascendants, collaterals and the spouse in the Code's order. Every decedent in this chapter died intestate."],["ownership","Ownership · art. 477","“The right that confers on a person DIRECT, IMMEDIATE, AND EXCLUSIVE AUTHORITY over a thing. The owner may USE, ENJOY, AND DISPOSE of it…” — usus, fructus, abusus."],["by heads","By heads","Each surviving taker counts as one and they divide equally — art. 888's default for descendants in the same degree, and the WRONG answer whenever representation applies."],["by roots","By roots · art. 885","“In all cases in which representation is permitted, THE PARTITION IS MADE BY ROOTS; if one root has produced several branches, the subdivision is also made by roots in each branch, and the members of the same branch TAKE BY HEADS.”"],["renounce","Renunciation · art. 887","“One who has renounced his right to succeed to another MAY STILL ENJOY THE RIGHT OF REPRESENTATION with respect to that other.” And per his slide, a renouncer is treated as having predeceased."],["unworthy","Unworthy · art. 941","A successor convicted of, or judicially determined to have participated in, the intentional killing or attempted killing of the decedent. His slide: the unworthy and those who RENOUNCE are TREATED AS IF THEY PREDECEASED — so their descendants may represent them though they are alive."],["usufruct","Usufruct","The real right to use a thing belonging to another and take its fruits, while the naked ownership stays with someone else. The surviving spouse's rights in community property run through it."],["legatee","Legatee · art. 876","A TESTATE successor — one who takes under a testament. Intestate successors are HEIRS. His Dubos slide says transmission is open to “any heir (or legatee)”."],["avowal","Avowal action · art. 198","The father's own action to establish his paternity. STRICTLY PERSONAL — not heritable — burden of PREPONDERANCE, and never later than one year from the child's death. The periods are peremptive."],["degree","Degree · arts. 900–901","Each generation is a degree. DIRECT: generations between heir and deceased. COLLATERAL: up to the COMMON ANCESTOR plus back down. Sibling 2 · niece and uncle 3 · first cousin 4."],["seizin","Seizin · art. 935","“IMMEDIATELY at the death of the decedent, universal successors acquire ownership of the estate.” This is WHY transmission works: the rights had already vested before the heir died."]];
+  var tip=document.getElementById('skTip'), cur=null;
+  var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,NOSCRIPT:1,CODE:1,PRE:1};
+  var seen={};   // terms are marked on FIRST occurrence only, or the page
+                 // turns into a field of dotted underlines and stops reading.
+
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+  var CITE=/\b(arts?\.|articles?)(\s+)(\d{2,4}(?:\.\d+)?(?:\s*(?:[\u2013\u2014-]|,|and|&|\u00b7)\s*\d{2,4}(?:\.\d+)?)*)/gi;
+
+  function wrapNums(list){
+    return list.replace(/\d{2,4}(?:\.\d+)?/g,function(n){
+      var a=ARTS[n];
+      if(!a) return '<span class="sk-art sk-miss" data-a="'+n+'">'+n+'</span>';
+      return '<span class="sk-art" data-a="'+n+'" tabindex="0" role="button" aria-label="Article '+n+'">'+n+'</span>';
+    });
+  }
+  function termRe(t){
+    return new RegExp('(?<![\\w-])('+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')(?![\\w-])','i');
+  }
+  function markup(text){
+    var out=text.replace(CITE,function(m,kw,ws,list){return kw+ws+wrapNums(list);});
+    for(var i=0;i<TERMS.length;i++){
+      var key=TERMS[i][0];
+      if(seen[key]) continue;
+      var re;
+      try{ re=termRe(key); }catch(e){ continue; }
+      if(re.test(out)){
+        out=out.replace(re,function(mm,g1){
+          return '<span class="sk-dfn" data-t="'+esc(key)+'" tabindex="0" role="button">'+g1+'</span>';
+        });
+        seen[key]=1;
+      }
+    }
+    return out;
+  }
+  function walk(node){
+    if(node.nodeType===1){
+      if(SKIP[node.tagName]||node.id==='skTip') return;
+      if(node.classList&&(node.classList.contains('sk-art')||node.classList.contains('sk-dfn'))) return;
+      for(var i=node.childNodes.length-1;i>=0;i--) walk(node.childNodes[i]);
+      return;
+    }
+    if(node.nodeType!==3) return;
+    var t=node.nodeValue;
+    if(!t||!t.trim()) return;
+    var html=markup(t);
+    if(html===t) return;
+    var span=document.createElement('span');
+    span.innerHTML=html;
+    node.parentNode.replaceChild(span,node);
+  }
+  walk(document.body);
+
+  /* Pages that re-render (the devolution simulator rewrites its tree and answer
+     panel on every click) would otherwise lose their tooltips the moment you
+     touch anything, and newly drawn citations would never get them at all.
+     Watch for added nodes and wrap those too. `busy` stops the observer from
+     reacting to its own wrapping. */
+  var busy=false, pending=null;
+  function rescan(root){
+    busy=true;
+    try{ walk(root||document.body); } finally {
+      setTimeout(function(){ busy=false; }, 0);
+    }
+  }
+  if(window.MutationObserver){
+    var mo=new MutationObserver(function(muts){
+      if(busy) return;
+      var roots=[];
+      muts.forEach(function(m){
+        // Writing the tooltip is itself a mutation. Re-scanning because of it
+        // swaps DOM nodes under the cursor, which fires mouseout and closes
+        // the tooltip the instant it opens. Ignore anything inside #skTip.
+        if(m.target===tip || (tip && tip.contains(m.target))) return;
+        [].forEach.call(m.addedNodes,function(n){
+          if(n.nodeType===1 && n.id!=='skTip' && !(n.classList&&(n.classList.contains('sk-art')||n.classList.contains('sk-dfn')))) roots.push(n);
+          else if(n.nodeType===3 && n.parentNode) roots.push(n.parentNode);
+        });
+      });
+      if(!roots.length) return;
+      clearTimeout(pending);
+      pending=setTimeout(function(){ roots.forEach(function(r){ if(r.isConnected) rescan(r); }); }, 80);
+    });
+    mo.observe(document.body,{childList:true,subtree:true});
+  }
+  window.__studykit={rescan:rescan, arts:ARTS, terms:TERMS};
+
+  function show(el){
+    var k,t,d,s;
+    if(el.dataset.a){
+      var a=ARTS[el.dataset.a]; if(!a) return;
+      k='La. Civ. Code art. '+el.dataset.a; t=a.h; d=a.b;
+      s='verbatim \u00b7 offline Louisiana Civil Code bank';
+    }else{
+      var key=el.dataset.t, hit=null;
+      for(var i=0;i<TERMS.length;i++) if(TERMS[i][0]===key){hit=TERMS[i];break;}
+      if(!hit) return;
+      k='Defined term'; t=hit[1]; d=hit[2]; s='course glossary';
+    }
+    tip.innerHTML='<span class="k">'+esc(k)+'</span><span class="t">'+esc(t)+'</span>'+
+                  '<p class="d">'+esc(d)+'</p><span class="s">'+esc(s)+'</span>';
+    tip.style.display='block'; tip.setAttribute('aria-hidden','false'); cur=el; place(el);
+  }
+  function place(el){
+    var r=el.getBoundingClientRect(), b=tip.getBoundingClientRect(), pad=10;
+    var left=Math.min(Math.max(pad,r.left), window.innerWidth-b.width-pad);
+    var top=r.bottom+8;
+    if(top+b.height>window.innerHeight-pad) top=Math.max(pad, r.top-b.height-8);
+    tip.style.left=left+'px'; tip.style.top=top+'px';
+  }
+  function hide(){tip.style.display='none';tip.setAttribute('aria-hidden','true');cur=null;}
+
+  function target(e){return e.target.closest && e.target.closest('.sk-art:not(.sk-miss),.sk-dfn');}
+  document.addEventListener('mouseover',function(e){var el=target(e); if(el) show(el);});
+  document.addEventListener('mouseout',function(e){if(e.target.closest&&e.target.closest('.sk-art,.sk-dfn')) hide();});
+  document.addEventListener('focusin',function(e){var el=target(e); if(el) show(el);});
+  document.addEventListener('focusout',hide);
+  document.addEventListener('click',function(e){
+    var el=target(e);
+    if(!el){hide();return;}
+    e.preventDefault();
+    if(tip.style.display==='block'&&cur===el) hide(); else show(el);
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape') hide();});
+  // Reposition rather than dismiss: focusing an element scrolls it into view,
+  // and dismissing on scroll made the keyboard path impossible to use.
+  window.addEventListener('scroll',function(){
+    if(tip.style.display!=='block'||!cur) return;
+    var r=cur.getBoundingClientRect();
+    if(r.bottom<0||r.top>window.innerHeight) hide(); else place(cur);
+  },{passive:true});
+  window.addEventListener('resize',hide);
+})();
+</script>
+<!-- STUDYKIT:END -->
+</body>
+</html>
