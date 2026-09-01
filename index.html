@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Devolution Simulator — Successions &amp; Donations · Prof. M. Hernandez</title>
+<title>The Beautiful Haley Simulator — Prof. M. Hernandez · L715</title>
 <style>
   :root{
     --bg:#faf8f4;--panel:#fff;--ink:#14110d;--muted:#6b6255;--rule:#e2dbcd;
@@ -242,19 +242,20 @@
 
   /* masthead — this is the first thing anyone sees, including the professor */
   .brand{display:flex;align-items:center;gap:9px;min-width:0}
-  .brand .bmark{font-size:17px;color:var(--accent);line-height:1;
+  .brand .bmark{font-size:22px;color:var(--accent);line-height:1;
     filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 45%,transparent))}
   .brand .btxt{display:flex;flex-direction:column;min-width:0;line-height:1.05}
-  .brand .bt1{font:800 21px/1 ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
-    letter-spacing:.14em;color:var(--ink);white-space:nowrap;
-    background:linear-gradient(93deg,var(--ink) 30%,var(--accent) 130%);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .brand .bt2{font:600 9.5px/1.35 ui-sans-serif,system-ui,sans-serif;letter-spacing:.055em;
+  .brand .bt1{font:900 27px/1 ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    letter-spacing:.02em;color:var(--ink);white-space:nowrap;
+    background:linear-gradient(96deg,var(--ink) 22%,var(--accent) 92%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    text-shadow:0 1px 0 rgba(0,0,0,.04)}
+  .brand .bt2{font:600 10.5px/1.35 ui-sans-serif,system-ui,sans-serif;letter-spacing:.05em;
     text-transform:uppercase;color:var(--muted);margin-top:3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .topbar{padding:9px 0 10px}
   @media(max-width:900px){
-    .brand .bt1{font-size:17px;letter-spacing:.1em}
+    .brand .bt1{font-size:18px;letter-spacing:0;white-space:normal}
     .brand .bt2{white-space:normal;font-size:9px}
   }
   @media print{ .brand .bt1{-webkit-text-fill-color:#000;color:#000} }
@@ -492,8 +493,8 @@
   <div class="brand">
     <span class="bmark">&#9670;</span>
     <span class="btxt">
-      <span class="bt1">DEVOLUTION</span>
-      <span class="bt2">Louisiana Successions &amp; Donations &middot; Prof. Milton &ldquo;MJ&rdquo; Hernandez &middot; LCIV&#8209;L715</span>
+      <span class="bt1">PROF. MILTON &ldquo;MJ&rdquo; HERNANDEZ</span>
+      <span class="bt2">The Beautiful Haley Simulator &middot; Louisiana Successions &amp; Donations &middot; LCIV&#8209;L715 &middot; Loyola New Orleans</span>
     </span>
   </div>
   <span class="sp"></span>
@@ -698,6 +699,27 @@
   function grp(cls){ return P.filter(function(p){return p.cls===cls && A(p.id);}); }
   function issueOf(id){ return P.filter(function(p){return p.repOf===id && (A(p.id)||AFT(p.id));}); }
 
+  // Representation runs to infinity in the direct descending line (arts. 881-882),
+  // and art. 885 partitions BY ROOTS at every level -- so a grandchild who
+  // predeceased is himself represented by his own issue, who split HIS share and
+  // not the root's. Weights are kept as exact fractions (wn/wd of the root).
+  function branchHolders(id){
+    var live=[], deep=[];
+    P.filter(function(p){return p.repOf===id;}).forEach(function(k){
+      if(A(k.id)||AFT(k.id)) live.push(k);
+      else if(BEF(k.id) && branchHolders(k.id).length) deep.push(k);
+    });
+    var n=live.length+deep.length; if(!n) return [];
+    var out=[];
+    live.forEach(function(k){ out.push({n:k.label, tr:AFT(k.id), wn:1, wd:n, chain:[]}); });
+    deep.forEach(function(k){
+      branchHolders(k.id).forEach(function(h){
+        out.push({n:h.n, tr:h.tr, wn:h.wn, wd:h.wd*n, chain:h.chain.concat([k.label])});
+      });
+    });
+    return out;
+  }
+
   var GEN_SCEN=[
    {n:'1 · Three children', s:{c1:0,c2:0,c3:0}, prop:'separate', k:'The baseline',
     t:'Art. 888 &mdash; equal portions <b>by heads</b>. The ladder stops on rung one.'},
@@ -739,6 +761,58 @@
   // ================= family models =================
   var MODELS={};
   MODELS.generic={ name:'Generic family' };  // filled at boot, once the GEN_* blocks below have run
+  // ---- Prof. Hernandez's own chart — the one he teaches from in Classes 2-4.
+  // Read off his slide: row positions give the generations, and the four
+  // anchored connectors (Ducky-Joann, Sug-Susie, Anne-Milton, MJ-Haley) are
+  // SPOUSE bars joining a child to their partner. Arthur is the decedent on
+  // the Class 4 slide, so the tree is built from him.
+  MODELS.hernandez={ name:'Prof. Hernandez\u2019s chart',
+    P:[
+      {id:'sybil',   label:'Sybil',   tier:'D', tag:'Arthur\u2019s spouse', cls:'spouse', sex:'f'},
+      {id:'ducky',   label:'Ducky',   tier:'C', cls:'desc', deg:1, sex:'m'},
+      {id:'joann',   label:'Joann',   tier:'C', tag:'Ducky\u2019s spouse', cls:'none', deg:99, sex:'f'},
+      {id:'sug',     label:'Sug',     tier:'C', cls:'desc', deg:1, sex:'m'},
+      {id:'susie',   label:'Susie',   tier:'C', tag:'Sug\u2019s spouse', cls:'none', deg:99, sex:'f'},
+      {id:'michelle',label:'Michelle',tier:'G', cls:'gk', deg:2, repOf:'ducky', sex:'f'},
+      {id:'steph',   label:'Stephanie',tier:'G',cls:'gk', deg:2, repOf:'ducky', sex:'f'},
+      {id:'milton',  label:'Milton',  tier:'G', cls:'gk', deg:2, repOf:'sug', sex:'m'},
+      {id:'anne',    label:'Anne',    tier:'G', tag:'adopted \u00b7 Milton\u2019s spouse', cls:'none', deg:99, sex:'f'},
+      {id:'nancy',   label:'Nancy',   tier:'G', cls:'gk', deg:2, repOf:'sug', sex:'f'},
+      {id:'five',    label:'5 children',tier:'H',tag:'Michelle\u2019s', cls:'gk', deg:3, repOf:'michelle'},
+      {id:'two',     label:'2 children',tier:'H',tag:'Stephanie\u2019s', cls:'gk', deg:3, repOf:'steph'},
+      {id:'alex',    label:'Alex',    tier:'H', tag:'MJ\u2019s 1/2 brother, same Mom \u2014 no tie to Arthur', cls:'none', deg:99, sex:'m'},
+      {id:'mj',      label:'MJ',      tier:'H', tag:'\u201cme\u201d on his chart', cls:'gk', deg:3, repOf:'milton', sex:'m'},
+      {id:'haley',   label:'The beautiful Haley', tier:'H', tag:'MJ\u2019s spouse', cls:'none', deg:99, sex:'f'},
+      {id:'kath',    label:'Katherine',tier:'H', cls:'gk', deg:3, repOf:'nancy', sex:'f'},
+      {id:'kyle',    label:'Kyle',    tier:'H', cls:'gk', deg:3, repOf:'nancy', sex:'m'},
+      {id:'milo',    label:'Sweet Baby Milo', tier:'I', tag:'MJ &amp; Haley\u2019s', cls:'gk', deg:4, repOf:'mj'}
+    ],
+    GENS:[
+      {y:14,  lab:'Arthur \u00b7 the decedent', ids:['sybil'], dec:true},
+      {y:86,  lab:'Children',          ids:['ducky','joann','sug','susie']},
+      {y:158, lab:'Grandchildren',     ids:['michelle','steph','milton','anne','nancy']},
+      {y:236, lab:'Great-grandchildren',ids:['five','two','alex','mj','haley','kath','kyle']},
+      {y:308, lab:'Great-great',       ids:['milo']}
+    ],
+    LINKS:[
+      {f:['__DEC__','sybil'], t:['ducky','sug']},
+      {f:['ducky','joann'],   t:['michelle','steph']},
+      {f:['sug','susie'],     t:['milton','nancy']},
+      {f:['milton','anne'],   t:['mj']},
+      {f:['anne'],            t:['alex']},
+      {f:['mj','haley'],      t:['milo']},
+      {f:['michelle'],        t:['five']},
+      {f:['steph'],           t:['two']},
+      {f:['nancy'],           t:['kath','kyle']}
+    ],
+    SCEN:[
+      {n:'Everyone alive', k:'as drawn', prop:'separate', s:{sybil:0,ducky:0,joann:0,sug:0,susie:0,michelle:0,steph:0,milton:0,anne:0,nancy:0,five:0,two:0,alex:0,mj:0,haley:0,kath:0,kyle:0,milo:0}},
+      {n:'Sug predeceases', k:'representation', prop:'separate', s:{sybil:0,ducky:0,joann:0,sug:1,susie:0,michelle:0,steph:0,milton:0,anne:0,nancy:0,five:0,two:0,alex:0,mj:0,haley:0,kath:0,kyle:0,milo:0}},
+      {n:'Sug and Milton both predecease', k:'representation, two levels', prop:'separate', s:{sybil:0,ducky:0,joann:0,sug:1,susie:0,michelle:0,steph:0,milton:1,anne:0,nancy:0,five:0,two:0,alex:0,mj:0,haley:0,kath:0,kyle:0,milo:0}},
+      {n:'Sug survives, then dies', k:'transmission', prop:'separate', s:{sybil:0,ducky:0,joann:0,sug:2,susie:0,michelle:0,steph:0,milton:0,anne:0,nancy:0,five:0,two:0,alex:0,mj:0,haley:0,kath:0,kyle:0,milo:0}},
+      {n:'Both children predecease', k:'the whole estate by roots', prop:'separate', s:{sybil:0,ducky:1,joann:0,sug:1,susie:0,michelle:0,steph:0,milton:0,anne:0,nancy:0,five:0,two:0,alex:0,mj:0,haley:0,kath:0,kyle:0,milo:0}}
+    ]
+  };
   MODELS.xavier={ name:'Xavier — Quiz 2',
     P:[
       {id:'helga',label:'Helga',   tier:'Grandparents',tag:'paternal grandmother',cls:'asc',deg:2,line:'p'},
@@ -794,12 +868,15 @@
     MODEL=k; DECNAME=''; var m=MODELS[k];
     // infer sex from the role words the models already use
     if(m.P) m.P.forEach(function(q){ if(!q.sex){ var g=sexFromLabel(q.label)||sexFromLabel(q.tag||''); if(g) q.sex=g; } });
-    P=m.P; GENS=m.GENS; LINKS=m.LINKS; SCEN=m.SCEN;
+    P=JSON.parse(JSON.stringify(m.P));
+    LINKS=JSON.parse(JSON.stringify(m.LINKS));
+    SCEN=m.SCEN||[];
+    GENS=m.GENS?JSON.parse(JSON.stringify(m.GENS)):[];
     st={}; P.forEach(function(q){ st[q.id]=1; });
     buildScenarios(); cur=null; revealed=false; STEP=0;
     var mb=document.getElementById('models');
     if(mb) [].forEach.call(mb.children,function(x){ x.classList.toggle('on', x.__m===k); });
-    load(SCEN[0]);
+    if(SCEN&&SCEN.length) load(SCEN[0]);
   }
 
   // ---- descendant roots: living children, plus predeceased children represented by issue
@@ -809,9 +886,8 @@
       if(A(c.id)) roots.push({label:c.label, holders:[{n:c.label,tr:false}], rep:false});
       else if(AFT(c.id)) roots.push({label:c.label, holders:[{n:c.label,tr:true}], rep:false, tr:true});
       else if(BEF(c.id)){
-        var iss=issueOf(c.id);
-        if(iss.length) roots.push({label:c.label, rep:true,
-          holders:iss.map(function(g){return {n:g.label, tr:AFT(g.id)};})});
+        var iss=branchHolders(c.id);
+        if(iss.length) roots.push({label:c.label, rep:true, holders:iss});
       }
     });
     if(roots.length) return roots;
@@ -837,13 +913,22 @@
   function emitRoot(root,num,den,takers,art,extra,raw){
     var each=root.holders.length;
     root.holders.forEach(function(h){
+      var wn=(h.wn===undefined?1:h.wn), wd=(h.wd===undefined?each:h.wd);
+      var deep=h.chain&&h.chain.length;
       var cls = h.tr ? 'tr' : (root.rep ? 'rep' : '');
       var who = h.n;
-      if(root.rep) who += ' <i>(representing '+root.label+')</i>';
+      if(root.rep){
+        var rl = root.label || root.repOf || '';
+        who += ' <i>(representing '+(deep?h.chain[0]:rl)
+             + (deep?', in '+rl+'&rsquo;s root':'')+')</i>';
+      }
       if(h.tr) who += ' <i>&rarr; his own successors</i>';
-      var show = raw&&each===1 ? num+'/'+den : frac(num,den*each);
+      var show = raw&&each===1&&wd===1 ? num+'/'+den : frac(num*wn, den*wd);
+      var note='';
+      if(deep) note = ' — '+(root.label||root.repOf||'the root')+'&rsquo;s '+frac(num,den)+', divided again by roots';
+      else if(wd>1) note = ' — the root&rsquo;s '+frac(num,den)+' split '+wd+' ways';
       takers.push({cls:cls, who:who,
-        what:'<b>'+show+'</b>'+(each>1?' — the root&rsquo;s '+frac(num,den)+' split '+each+' ways':'')+(extra||''),
+        what:'<b>'+show+'</b>'+note+(extra||''),
         art:art + (root.rep?', 881, 885':'') + (h.tr?', 937':'')});
     });
   }
@@ -1851,12 +1936,21 @@
       if(!kAlive.length) parts.push('<b>none of whom survived</b>');
       L.push(parts.join(', ')+'.');
       kBefore.forEach(function(k){
-        var iss=issueOfPerson(k.id);
-        L.push('<b>'+nm(k)+'</b> <b>predeceased</b> the decedent'+
-          (iss.length? ', leaving '+iss.length+' child'+(iss.length===1?'':'ren')+' of '+
-             (k.sex==='f'?'her':k.sex==='m'?'his':'their')+' own \u2014 '+list(iss.map(nm))+
-             ' \u2014 who <b>represent</b> '+(k.sex==='f'?'her':k.sex==='m'?'him':'them')+' under arts. 881\u2013885'
-           : ', <b>without issue</b>, and simply drops out')+'.');
+        var pos=(k.sex==='f'?'her':k.sex==='m'?'his':'their');
+        var hs=branchHolders(k.id);
+        if(!hs.length){
+          L.push('<b>'+nm(k)+'</b> <b>predeceased</b> the decedent, <b>without issue</b>, and simply drops out.');
+          return;
+        }
+        var direct=P.filter(function(q){return q.repOf===k.id;});
+        var txt='<b>'+nm(k)+'</b> <b>predeceased</b> the decedent, leaving '+direct.length+' child'+
+                (direct.length===1?'':'ren')+' of '+pos+' own \u2014 '+list(direct.map(nm))+'.';
+        var who=hs.map(function(h){
+          return '<b>'+h.n+'</b>'+(h.chain&&h.chain.length
+            ? ' (in the place of <b>'+h.chain[0]+'</b>, who also predeceased)' : '');
+        });
+        txt+=' '+(pos.charAt(0).toUpperCase()+pos.slice(1))+' portion is taken <b>by roots</b>, under arts. 881\u2013885, by '+list(who)+'.';
+        L.push(txt);
       });
       kAfter.forEach(function(k){
         L.push('<b>'+nm(k)+'</b> <b>survived the decedent and died afterwards</b>; the inheritance had already vested, so '+
@@ -2027,8 +2121,8 @@
     mb.appendChild(b);
   });
   document.getElementById('modelhint').innerHTML =
-    'Switch the cast, keep the engine. <b>Xavier — Quiz 2</b> loads the exact fact pattern from his quiz, with each question as a scenario.';
-  useModel('generic');
+    '<b>Prof. Hernandez\u2019s chart</b> is the one he draws in Classes 2\u20134 \u2014 Arthur is the decedent, and the structure is read off his slide. <b>Generic family</b> is a neutral cast; <b>Xavier</b> is his Quiz 2 fact pattern.';
+  useModel('hernandez');
 
   // Printing a folded <details> prints nothing inside it. Open them all for
   // the print, then put them back exactly as the reader had them.
@@ -2396,6 +2490,7 @@
   });
 })();
 </script>
+
 <!-- STUDYKIT:BEGIN — generated by _lib/enrich.py; do not hand-edit -->
 <style>
   /* STUDYKIT — article citations and defined terms.

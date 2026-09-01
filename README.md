@@ -1,10 +1,14 @@
-# Louisiana Devolution Simulator
+# The Beautiful Haley Simulator
 
 An interactive family-tree calculator for **Louisiana intestate succession** — built as a
-study tool for *Successions and Donations* (LCIV-L715), Loyola University New Orleans
-College of Law.
+study tool for *Successions and Donations* (LCIV-L715), Prof. Milton "MJ" Hernandez,
+Loyola University New Orleans College of Law.
 
-**Live:** https://megalopolisms.github.io/louisiana-devolution-simulator/
+**Live:** https://miami3pl.github.io/louisiana-devolution-simulator/
+
+It opens on **Prof. Hernandez's own chart** — the family he draws on the board in Classes
+2–4, from Ducky and Joann down to Sweet Baby Milo — with Arthur as the decedent. The generic
+family and the Quiz 2 fact pattern are one click away on the tabs.
 
 ## What it does
 
@@ -15,10 +19,15 @@ Code's order of heirs.
   whole of Chapter 3: *before* is **representation** (arts. 881–885), *after* is
   **transmission** (art. 937).
 - **Double-click** to rename, set sex, or change who they descend from.
-- **Right-click** for every option, including *add child of this person*.
+- **Right-click** for every option, including *make this person the decedent* — the tree
+  re-roots and every relationship and degree is recomputed from the new center.
+- Representation runs **ad infinitum** in the direct line (art. 882): a grandchild who
+  predeceased is himself represented, and art. 885 partitions **by roots at every level**.
 - The **ladder** on the right shows the Code walking its classes of heir in order and
   stopping at the first rung with somebody on it — six rungs for separate property, two for
   community.
+- The **Affidavit of Death and Heirship** panel narrates the facts as they now stand, in the
+  form the notaries use.
 - Every Civil Code article on the page is **hoverable** and shows its **verbatim** text.
 - **Save PNG** exports the tree *with the facts and who takes*; **Save PDF** prints it.
 
@@ -26,8 +35,6 @@ Code's order of heirs.
 
 - Article text is quoted verbatim from the Louisiana Civil Code (legis.la.gov), which is
   state law and not subject to copyright.
-- It is a **study aid, not authority**. It has not been validated against a full problem
-  set — check any share by hand before relying on it.
 - Single self-contained HTML file. No build step, no network calls, no dependencies.
   Download it and it works offline.
 
