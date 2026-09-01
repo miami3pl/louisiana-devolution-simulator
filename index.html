@@ -191,6 +191,17 @@
     font:700 12px ui-sans-serif,system-ui;background:#1f7a4d;color:#fff}
   .pedit .pb .rm2{background:#8c2d19}
   .pedit .pb .cx{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+  .pedit .picoLab{display:block;font-size:10.5px;font-weight:700;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--muted);margin:8px 0 3px}
+  .pico{display:flex;flex-wrap:wrap;gap:3px;max-height:112px;overflow-y:auto;
+    border:1px solid var(--rule);border-radius:6px;padding:4px;background:var(--code)}
+  .pico button{font-size:15px;line-height:1;width:26px;height:24px;padding:0;cursor:pointer;
+    border:1px solid transparent;border-radius:5px;background:transparent;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+  .pico button:hover{background:var(--panel);border-color:var(--rule)}
+  .pico button.on{border-color:var(--accent);background:var(--panel);box-shadow:0 0 0 1px var(--accent)}
+  .pico button.wd{width:auto;padding:0 7px;font-size:10px;font-weight:700;
+    font-family:inherit;color:var(--muted);letter-spacing:.4px}
   @media print{ .pedit{display:none!important} }
 
   .pmenu{position:fixed;z-index:130;min-width:236px;background:var(--panel);
@@ -1415,7 +1426,16 @@
       o.push('<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'" stroke="'+line+'" stroke-width="'+(takes?3.2:2)+'"'+
              (stt===1&&!takes?' stroke-dasharray="5 3"':'')+(stt===2&&!takes?' stroke-dasharray="1 4"':'')+'/>');
       if(pp.sex) o.push('<text x="'+(x+9)+'" y="'+(y+13)+'" font-size="10" font-weight="700" fill="'+line+'" opacity=".85" text-anchor="start">'+(pp.sex==='m'?'\u2642':'\u2640')+'</text>');
-      o.push('<text x="'+(x+bw/2)+'" y="'+(y+19)+'" font-size="12" font-weight="700" fill="'+txt+'">'+esc(pp.label)+'</text>');
+      var ico=autoIcon(pp);
+      if(ico) o.push('<text class="pico2" x="'+(x+bw-8)+'" y="'+(y+14)+'" font-size="12" text-anchor="end" '+
+                     'font-family="'+EMOJI_FONT+'">'+ico+'</text>');
+      // The name must fit the box. Long names ("The beautiful Haley") used to run
+      // straight out through the rounded edge; an icon steals ~14px more, so the
+      // size is computed from the room actually left, not assumed.
+      var avail = bw - 14 - (ico?15:0) - (pp.sex?11:0);
+      var nfs = 12;
+      while(nfs>7.5 && pp.label.length*nfs*0.545 > avail) nfs -= 0.5;
+      o.push('<text class="pnm" x="'+(x+bw/2)+'" y="'+(y+19)+'" font-size="'+nfs+'" font-weight="700" fill="'+txt+'">'+esc(pp.label)+'</text>');
       var sub = (pp.role? esc(pp.role)+' · ' : '') + tag;
       if(takes){
         o.push('<text x="'+(x+bw/2)+'" y="'+(y+35)+'" font-size="14" font-weight="700" fill="var(--accent2)">'+takes+'</text>');
@@ -1428,6 +1448,42 @@
     });
 
     box.innerHTML=svgWrap(W,H,o.join(''));
+
+    // ---- exact fit pass. Building the SVG as a string can only ESTIMATE how wide
+    // a bold name renders, and the estimate was optimistic: "Sweet Baby Milo" ran
+    // under his own baby icon. Now the real width is measured. A name that still
+    // will not clear the icon at a readable size does NOT get shrunk into
+    // illegibility -- the ICON moves to the bottom corner instead. The name is
+    // the fact; the icon is decoration, so the icon yields.
+    [].forEach.call(box.querySelectorAll('g.pn'),function(g){
+      var r=g.querySelector('rect'), nameT=g.querySelector('text.pnm');
+      if(!r||!nameT) return;
+      var icoT=g.querySelector('text.pico2'), sexT=g.querySelector('text:not(.pnm):not(.pico2)');
+      var bx=r.x.baseVal.value, bwid=r.width.baseVal.value;
+      var bh=r.height.baseVal.value, by=r.y.baseVal.value;
+      var left = bx + (sexT?18:6), edge = bx + bwid - 6;
+      var FLOOR = 9;
+      function fit(right){
+        var fs=parseFloat(nameT.getAttribute('font-size'))||12, n=0;
+        while(n++<16){
+          var bb; try{ bb=nameT.getBBox(); }catch(err){ return true; }
+          if(bb.x>=left && bb.x+bb.width<=right) return true;
+          if(fs<=FLOOR) return false;
+          fs-=0.5; nameT.setAttribute('font-size',fs);
+        }
+        return false;
+      }
+      var right=edge;
+      if(icoT){ try{ right=Math.min(edge, icoT.getBBox().x-3); }catch(err){} }
+      if(!fit(right) && icoT){
+        // give the name the whole width back and drop the icon into the corner
+        nameT.setAttribute('font-size',12);
+        icoT.setAttribute('y', by+bh-6);
+        icoT.setAttribute('font-size',11);
+        fit(edge);
+      }
+    });
+
     // click a box to cycle alive → before → after; double-click to edit it
     var CLICK=null;
     [].forEach.call(box.querySelectorAll('g.pn'),function(g){
@@ -1614,6 +1670,35 @@
     }
     return text;
   }
+  // ---------------- node icons (2026-08-31) ----------------
+  // An icon is a READING AID, never a legal fact: the arithmetic never consults
+  // one. p.icon undefined = infer from the person; '' = the user said none.
+  var ICON_SET = ['\ud83d\udc76','\ud83e\uddd2','\ud83d\udc66','\ud83d\udc67','\ud83e\uddd1',
+    '\ud83d\udc69','\ud83d\udc68','\ud83d\udc75','\ud83d\udc74','\ud83d\udc6a','\ud83d\udc91',
+    '\ud83d\udc8d','\ud83c\udf31','\u2b50','\ud83c\udf93','\u2696\ufe0f','\ud83d\udd6f\ufe0f',
+    '\u23f3','\u26b0\ufe0f','\ud83c\udf39','\ud83d\udc15','\ud83d\udc08','\u265b','\u25d0',
+    '\ud83c\udfe0','\u2708\ufe0f','\ud83c\udfb8','\u26f5','\ud83c\udfc8','\ud83d\udcda'];
+  var EMOJI_FONT = '\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Noto Color Emoji\',sans-serif';
+  function autoIcon(p){
+    if(p.icon!==undefined) return p.icon;              // '' means deliberately none
+    var t=((p.label||'')+' '+(p.tag||'')+' '+(p.role||'')).toLowerCase();
+    if(/\bbaby\b|infant|newborn/.test(t))            return '\ud83d\udc76';
+    if(/\bchildren\b/.test(t))                       return '\ud83d\udc6a';
+    if(/adopted/.test(t))                             return '\ud83c\udf31';
+    if(/\bme\b|myself/.test(t))                      return '\u2b50';
+    if(/spouse|widow|husband|\bwife\b|married/.test(t)) return '\ud83d\udc8d';
+    if(/grandmother|grandma/.test(t))                 return '\ud83d\udc75';
+    if(/grandfather|grandpa/.test(t))                 return '\ud83d\udc74';
+    // Half-blood outranks any parent word in the tag: a half-sibling's tag says
+    // "same mother", and that must NOT put a mother icon on the brother. It is
+    // also the fact art. 893 turns on, so it earns the slot.
+    if(p.blood==='half'||/half[- ]?(bro|sis|blood|sibling)|1\/2 (bro|sis)/.test(t))
+                                                      return '\u25d0';
+    if(/\bmother\b/.test(t))                         return '\ud83d\udc69';
+    if(/\bfather\b/.test(t))                         return '\ud83d\udc68';
+    return '';
+  }
+
   function sexFromLabel(text){
     if(!text) return '';
     var pairs=GPAIRS.slice().sort(function(a,b){return b[0].length-a[0].length;});
@@ -1687,6 +1772,12 @@
       '<label>Descends from<select class="par">'+
         cands.map(function(c){ return '<option value="'+c.id+'"'+(c.id===curPar?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('')+
       '</select></label>'+
+      '<span class="picoLab">Icon</span><div class="pico">'+
+        '<button class="wd'+(pp.icon===undefined?' on':'')+'" data-i="auto">auto</button>'+
+        '<button class="wd'+(pp.icon===''?' on':'')+'" data-i="">none</button>'+
+        ICON_SET.map(function(e){ return '<button'+(pp.icon===e?' class="on"':'')+
+          ' data-i="'+e+'">'+e+'</button>'; }).join('')+
+      '</div>'+
       '<div class="pb"><button class="ok">Apply</button>'+
       '<button class="rm2">Remove</button><button class="cx">Close</button></div>';
     document.body.appendChild(host);
@@ -1694,6 +1785,15 @@
     host.style.left=Math.max(8,Math.min(clientX-r.width/2, window.innerWidth-r.width-8))+'px';
     host.style.top =Math.max(8,Math.min(clientY+14, window.innerHeight-r.height-8))+'px';
     var nm=host.querySelector('.nm'); nm.focus(); nm.select();
+    var pickedIcon = (pp.icon===undefined ? 'auto' : pp.icon);
+    [].forEach.call(host.querySelectorAll('.pico button'),function(b){
+      b.onclick=function(ev){
+        ev.preventDefault();
+        pickedIcon=b.getAttribute('data-i');
+        [].forEach.call(host.querySelectorAll('.pico button'),function(o){ o.classList.remove('on'); });
+        b.classList.add('on');
+      };
+    });
     function apply(){
       var v=nm.value.trim();
       var newSex=host.querySelector('.sx').value||'';
@@ -1705,6 +1805,7 @@
         pp.label=v;
         if(!pp.sex){ var inf=sexFromLabel(v); if(inf) pp.sex=inf; }
       }
+      if(pickedIcon==='auto') delete pp.icon; else pp.icon=pickedIcon;
       st[id]=parseInt(host.querySelector('.stt').value,10)||0;
       var np=host.querySelector('.par').value;
       host.remove();
@@ -2490,6 +2591,7 @@
   });
 })();
 </script>
+
 
 <!-- STUDYKIT:BEGIN — generated by _lib/enrich.py; do not hand-edit -->
 <style>

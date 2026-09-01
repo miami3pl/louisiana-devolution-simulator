@@ -28,6 +28,10 @@ Code's order of heirs.
   community.
 - The **Affidavit of Death and Heirship** panel narrates the facts as they now stand, in the
   form the notaries use.
+- Every person carries an **icon** — a baby for Sweet Baby Milo, a ring for a spouse, a
+  seedling for an adopted child, **◐ for half-blood** (the fact art. 893 turns on). Icons are
+  inferred from who the person is and can be changed per person in the editor. They are a
+  reading aid only: the arithmetic never consults one.
 - Every Civil Code article on the page is **hoverable** and shows its **verbatim** text.
 - **Save PNG** exports the tree *with the facts and who takes*; **Save PDF** prints it.
 
