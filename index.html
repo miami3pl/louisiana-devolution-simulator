@@ -111,6 +111,16 @@
   #ladder .empty{font:400 10.5px ui-sans-serif,system-ui;color:var(--muted);font-style:italic}
   @media(max-width:1100px){ .dwrap{display:block} #ladder{width:auto;border-left:0;padding-left:0;
     border-top:1px solid var(--rule);padding-top:10px;margin-top:10px;max-height:none} }
+
+  #ladder .lwho{display:block;margin-top:4px;font:500 11.5px/1.45 ui-sans-serif,system-ui}
+  #ladder .lwho.take{color:var(--accent2);font-weight:600}
+  #ladder .lwho.none{color:var(--muted);font-style:italic}
+  #ladder .lwho.later{color:var(--muted);opacity:.8;font-style:italic}
+  #ladder .lhow{margin-top:14px;padding-top:11px;border-top:1px solid var(--rule)}
+  #ladder .hk{font:500 11.5px/1.6 ui-sans-serif,system-ui;color:var(--muted);margin:0 0 3px}
+  #ladder kbd{display:inline-block;font:700 10px ui-monospace,Menlo,monospace;
+    background:var(--code);border:1px solid var(--rule);border-radius:4px;
+    padding:1px 5px;color:var(--ink);margin-right:3px}
   @media print{ #ladder{max-height:none;overflow:visible} }
   .pedit{position:fixed;z-index:120;width:270px;background:var(--panel);
     border:2px solid var(--accent);border-radius:12px;padding:12px 13px;
@@ -155,7 +165,7 @@
   body.focus #ctlcol{
     position:fixed;left:0;top:0;width:min(430px,88vw);height:100vh;z-index:90;
     background:var(--panel);border-right:2px solid var(--rule);
-    overflow:auto;padding:56px 16px 24px;
+    overflow:auto;padding:64px 16px 24px;
     transform:translateX(-102%);transition:transform .22s ease;
     box-shadow:12px 0 34px -18px rgba(0,0,0,.5)}
   body.focus.drawer #ctlcol{transform:none}
@@ -173,7 +183,7 @@
   body.focus .diag.pin #diagbox{flex:1;display:flex;align-items:center}
   body.focus .diag.pin #diagbox svg{width:100%;height:auto}
 
-  .topbar{position:sticky;top:0;z-index:70;display:flex;flex-wrap:wrap;gap:8px;
+  .topbar{position:sticky;top:0;z-index:100;display:flex;flex-wrap:wrap;gap:8px;
     align-items:center;padding:8px 0;margin:0 0 10px;background:var(--bg);
     border-bottom:1px solid var(--rule)}
   .topbar .t{font:700 14px ui-sans-serif,system-ui;letter-spacing:.01em}
@@ -699,6 +709,8 @@
   var MODEL='generic';
   function useModel(k){
     MODEL=k; var m=MODELS[k];
+    // infer sex from the role words the models already use
+    if(m.P) m.P.forEach(function(q){ if(!q.sex){ var g=sexFromLabel(q.label)||sexFromLabel(q.tag||''); if(g) q.sex=g; } });
     P=m.P; GENS=m.GENS; LINKS=m.LINKS; SCEN=m.SCEN;
     st={}; P.forEach(function(q){ st[q.id]=1; });
     buildScenarios(); cur=null; revealed=false; STEP=0;
@@ -1399,6 +1411,51 @@
   }
 
 
+
+  // ---------------- gendered labels (2026-08-31) ----------------
+  // A person labelled "Grandmother" who is then marked male is nonsense on the
+  // page. Role words carry gender, so the label and the sex have to move
+  // together — in both directions.
+  var GPAIRS=[['grandmother','grandfather'],['mother','father'],['sister','brother'],
+              ['half-sister','half-brother'],['niece','nephew'],['aunt','uncle'],
+              ['daughter','son'],['wife','husband'],['widow','widower'],
+              ['stepmother','stepfather'],['granddaughter','grandson']];
+  function matchCase(src,out){
+    if(src===src.toUpperCase()&&src.length>1) return out.toUpperCase();
+    if(src[0]===src[0].toUpperCase()) return out.charAt(0).toUpperCase()+out.slice(1);
+    return out;
+  }
+  function swapGendered(text,toSex){
+    if(!text) return text;
+    // longest first so "half-sister" wins over "sister"
+    var pairs=GPAIRS.slice().sort(function(a,b){return b[0].length-a[0].length;});
+    for(var i=0;i<pairs.length;i++){
+      var f=pairs[i][0], m=pairs[i][1];
+      var want = toSex==='m' ? m : f, other = toSex==='m' ? f : m;
+      var re=new RegExp('(^|[^a-z])('+other+')($|[^a-z])','i');
+      var hit=re.exec(text);
+      if(hit) return text.replace(hit[2], matchCase(hit[2],want));
+    }
+    return text;
+  }
+  function sexFromLabel(text){
+    if(!text) return '';
+    var pairs=GPAIRS.slice().sort(function(a,b){return b[0].length-a[0].length;});
+    for(var i=0;i<pairs.length;i++){
+      if(new RegExp('(^|[^a-z])'+pairs[i][0]+'($|[^a-z])','i').test(text)) return 'f';
+      if(new RegExp('(^|[^a-z])'+pairs[i][1]+'($|[^a-z])','i').test(text)) return 'm';
+    }
+    return '';
+  }
+  function setSex(pp,sx){
+    // changing the sex renames a gendered role word, and its tag with it
+    if(sx && sx!==pp.sex){
+      pp.label = swapGendered(pp.label, sx);
+      if(pp.tag) pp.tag = swapGendered(pp.tag, sx);
+    }
+    pp.sex=sx;
+  }
+
   // ---------------- diagram-side editing (2026-08-31) ----------------
   var BRANCH=['#8c2d19','#2f5d8a','#2f6f4f','#8a5a1b','#6b4c9a','#1f7a4d','#a03b6b','#3f6f8a'];
   function branchColor(k){
@@ -1461,8 +1518,14 @@
     host.style.top =Math.max(8,Math.min(clientY+14, window.innerHeight-r.height-8))+'px';
     var nm=host.querySelector('.nm'); nm.focus(); nm.select();
     function apply(){
-      var v=nm.value.trim(); if(v) pp.label=v;
-      pp.sex=host.querySelector('.sx').value||'';
+      var v=nm.value.trim();
+      var newSex=host.querySelector('.sx').value||'';
+      if(newSex!==pp.sex){ setSex(pp,newSex); }        // may rewrite the label
+      if(v && v!==pp.label){
+        pp.label=v;
+        // typing "Grandfather" over a blank sex should set the sex too
+        if(!pp.sex){ var inf=sexFromLabel(v); if(inf) pp.sex=inf; }
+      }
       st[id]=parseInt(host.querySelector('.stt').value,10)||0;
       var np=host.querySelector('.par').value;
       host.remove();
@@ -1505,8 +1568,8 @@
       items.push(row('&#9679; Died BEFORE &rarr; representation', function(){ st[id]=1; }, st[id]===1?'on':''));
       items.push(row('&#9679; Died AFTER &rarr; transmission', function(){ st[id]=2; }, st[id]===2?'on':''));
       items.push({sep:1});
-      items.push(row('\u2642 Male', function(){ pp.sex='m'; }, pp&&pp.sex==='m'?'on':''));
-      items.push(row('\u2640 Female', function(){ pp.sex='f'; }, pp&&pp.sex==='f'?'on':''));
+      items.push(row('\u2642 Male', function(){ setSex(pp,'m'); }, pp&&pp.sex==='m'?'on':''));
+      items.push(row('\u2640 Female', function(){ setSex(pp,'f'); }, pp&&pp.sex==='f'?'on':''));
       items.push(row('Sex not stated', function(){ pp.sex=''; }, pp&&!pp.sex?'on':''));
       items.push({sep:1});
     }
@@ -1544,23 +1607,78 @@
 
   function renderLadder(){
     // The ladder IS the reasoning: the Code walks classes of heir in order and
-    // stops at the first one with somebody in it. Showing it beside the tree
-    // means you read WHY, not just who.
+    // stops at the first one with somebody in it. Abstract class names are not
+    // enough — name the PEOPLE, and on an empty rung say WHO was there and why
+    // they did not take. That is the question a reader actually has.
     var el=document.getElementById('ladder'); if(!el) return;
     var r; try{ r=compute(); }catch(e){ el.innerHTML=''; return; }
     var rows=r.steps||[], hitAt=-1;
     rows.forEach(function(x,i){ if(x.hit && hitAt<0) hitAt=i; });
-    el.innerHTML='<p class="lh">The ladder \u00b7 '+(prop==='community'?'community property':'separate property')+'</p>'+
-      rows.map(function(x,i){
-        var cls='lr'+((hitAt<0||i<=hitAt)?' reached':'')+(x.hit?' hit':'');
-        return '<div class="'+cls+'">'+
-          '<span class="la">'+esc(x.art||'')+'</span>'+
-          '<span class="lt">'+x.t+
-            (x.hit?'<span class="stop">\u2190 the answer stops here</span>'
-                  :(i<hitAt||hitAt<0?'<span class="empty"> — nobody on this rung</span>':''))+
-          '</span></div>';
-      }).join('') +
-      '<p class="lh" style="margin-top:12px">Right-click anyone in the tree for all options</p>';
+
+    // which classes of person each rung is about, keyed off its articles
+    function classesFor(art){
+      var a=String(art||'');
+      if(/88[5-9]|890/.test(a))      return ['desc','gk'];
+      if(/89[123]/.test(a))          return ['parent','sib','sibdesc'];
+      if(/894/.test(a))              return ['spouse'];
+      if(/895/.test(a))              return ['asc'];
+      if(/89[6-9]|90[01]/.test(a))   return ['coll'];
+      return [];
+    }
+    function statusWord(id){
+      return st[id]===0 ? 'alive' : (st[id]===1 ? 'died before' : 'died after');
+    }
+    function whoOn(art){
+      var cls=classesFor(art); if(!cls.length) return null;
+      var mem=P.filter(function(q){ return cls.indexOf(q.cls)>-1; });
+      if(!mem.length) return {none:true, list:'nobody of this class is in the tree'};
+      var alive=mem.filter(function(q){ return st[q.id]===0; });
+      var gone =mem.filter(function(q){ return st[q.id]!==0; });
+      return {
+        alive: alive.map(function(q){return q.label;}),
+        gone : gone.map(function(q){return q.label+' ('+statusWord(q.id)+')';})
+      };
+    }
+
+    var takersByName={};
+    (r.takers||[]).forEach(function(t){ takersByName[t.who]=t.what; });
+
+    var html='<p class="lh">The ladder \u00b7 '+(prop==='community'?'community property':'separate property')+'</p>';
+    html+=rows.map(function(x,i){
+      var cls='lr'+((hitAt<0||i<=hitAt)?' reached':'')+(x.hit?' hit':'');
+      var who=whoOn(x.art), detail='';
+      if(x.hit){
+        var names=(r.takers||[]).map(function(t){
+          return '<b>'+esc(t.who)+'</b> '+esc(t.what);
+        }).join(' \u00b7 ');
+        detail='<span class="stop">\u2190 the answer stops here</span>'+
+               (names?'<span class="lwho take">'+names+'</span>':'');
+      } else if(i<hitAt || hitAt<0){
+        if(who && who.none) detail='<span class="lwho none">'+who.list+'</span>';
+        else if(who && !who.alive.length && who.gone.length)
+          detail='<span class="lwho none">all predeceased \u2014 '+esc(who.gone.join(', '))+'</span>';
+        else if(who && who.alive.length)
+          detail='<span class="lwho none">skipped \u2014 a nearer class took first</span>';
+        else detail='<span class="lwho none">nobody on this rung</span>';
+      } else {
+        if(who && who.alive.length)
+          detail='<span class="lwho later">never reached \u2014 '+esc(who.alive.join(', '))+' would be next</span>';
+        else detail='<span class="lwho later">never reached</span>';
+      }
+      return '<div class="'+cls+'">'+
+        '<span class="la">'+esc(x.art||'')+'</span>'+
+        '<span class="lt">'+x.t+detail+'</span></div>';
+    }).join('');
+
+    html+='<div class="lhow"><p class="lh" style="margin:0 0 6px">How to use it</p>'+
+      '<div class="hk"><kbd>click</kbd> a person \u2014 alive \u2192 died BEFORE \u2192 died AFTER</div>'+
+      '<div class="hk"><kbd>double-click</kbd> \u2014 rename, set sex, change who they descend from</div>'+
+      '<div class="hk"><kbd>right-click</kbd> \u2014 every option, including <i>add child of this person</i></div>'+
+      '<div class="hk"><kbd>C</kbd> or <kbd>\u2630</kbd> \u2014 open facts &amp; options \u00b7 <kbd>Esc</kbd> closes</div>'+
+      '<div class="hk"><kbd>hover</kbd> any bold article \u2014 its verbatim text</div>'+
+      '<div class="hk"><kbd>Save PNG</kbd> \u2014 the tree <i>with</i> the facts and who takes</div>'+
+      '</div>';
+    el.innerHTML=html;
   }
 
   // ---------------- render ----------------
