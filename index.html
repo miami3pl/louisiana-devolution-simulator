@@ -93,12 +93,27 @@
   @media print{ .eduNote{border-color:#999} }
 
   .dwrap{display:flex;gap:14px;align-items:flex-start}
+
+  .affid{margin:12px 0 0;padding:15px 18px;border:1px solid var(--rule);border-radius:10px;
+    background:var(--panel);box-shadow:inset 0 0 0 1px var(--code)}
+  .affid .ah{display:block;font:700 9.5px ui-sans-serif,system-ui;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 9px;
+    padding-bottom:7px;border-bottom:1px solid var(--rule)}
+  .affid p{margin:0 0 7px;font:400 13.5px/1.65 Charter,Georgia,'Times New Roman',serif;color:var(--ink)}
+  .affid p:last-child{margin-bottom:0}
+  .affid b{font-weight:700}
+  .affid .acl{margin-top:11px;padding-top:9px;border-top:1px solid var(--rule);
+    font-style:italic;color:var(--accent2);font-weight:600}
+  .affid .asrc{margin-top:9px;padding-top:8px;border-top:1px dashed var(--rule);
+    font:400 10.5px/1.55 ui-sans-serif,system-ui,sans-serif;color:var(--muted);font-style:normal}
+  .affid .asrc b{color:var(--ink)}
+  @media print{ .affid{break-inside:avoid;border-color:#999} }
   .dwrap #diagbox{flex:1 1 auto;min-width:0}
   #ladder{flex:0 0 300px;width:300px;align-self:stretch;overflow:auto;
     border-left:1px solid var(--rule);padding-left:12px;max-height:calc(100vh - 210px)}
   #ladder .lh{font:700 10px ui-sans-serif,system-ui;letter-spacing:.11em;text-transform:uppercase;
     color:var(--muted);margin:0 0 8px}
-  #ladder .lr{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border-radius:8px;
+  #ladder .lr{display:block;padding:8px 10px;border-radius:8px;
     margin:0 0 5px;border-left:3px solid var(--rule);background:transparent;opacity:.5}
   #ladder .lr.reached{opacity:1;border-left-color:var(--muted)}
   #ladder .lr.hit{opacity:1;border-left-color:var(--accent);background:var(--takes)}
@@ -132,6 +147,9 @@
   #ladder .lt{display:block;font:400 11px/1.4 ui-sans-serif,system-ui;color:var(--muted)}
   #ladder .lwho{display:block;margin-top:4px;font:500 11.5px/1.45 ui-sans-serif,system-ui}
   #ladder .lwho.take{color:var(--accent2);font-weight:600}
+  #ladder .pw{display:block;margin:0 0 3px;padding:2px 4px;border-radius:5px}
+  #ladder .la{display:inline-block}
+  #ladder .lt{margin-top:3px}
   #ladder .lwho.none{color:var(--muted);font-style:italic}
   #ladder .lwho.later{color:var(--muted);opacity:.8;font-style:italic}
 
@@ -570,7 +588,7 @@
 <div class="diag pin">
   <h3>3 · The tree that results <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">— redraws on every click</span></h3>
   <div class="tabs" id="tabs"></div>
-  <div class="dwrap"><div id="diagbox"></div><aside id="ladder"></aside></div>
+  <div class="dwrap"><div><div id="diagbox"></div><div id="affidavit"></div></div><aside id="ladder"></aside></div>
   <p class="dcap" id="diagcap"></p>
   <div class="exportbar">
     <button class="big ghost" id="savePng">Save this tree as PNG</button>
@@ -1711,8 +1729,8 @@
         verdict='<span class="yn yes">YES</span>';
         var names=(r.takers||[]).map(function(t){
           var bare=String(t.who).replace(/\s*\(.*$/,'');
-          return '<span class="pw" data-who="'+esc(bare)+'"><b>'+esc(t.who)+'</b> '+esc(t.what)+'</span>';
-        }).join(' \u00b7 ');
+          return '<span class="pw" data-who="'+esc(bare)+'"><b>'+esc(t.who)+'</b> '+t.what+'</span>';
+        }).join('');
         detail='<span class="lwho take">'+(names||'takes')+'</span>'+
                '<span class="stop">\u2190 the Code stops here</span>';
       } else if(reached){
@@ -1766,6 +1784,88 @@
       '<div class="hk"><kbd>C</kbd> facts &amp; options \u00b7 <kbd>Esc</kbd> close</div>'+
       '<div class="hk"><kbd>hover</kbd> a bold article \u2014 its verbatim text</div></div>';
     el.innerHTML=html;
+  }
+
+
+  function renderAffidavit(){
+    // The same facts, stated the way a succession lawyer states them. An
+    // Affidavit of Death and Heirship is a real Louisiana instrument — one is
+    // in the record of Succession of Gore — so reading the tree back in that
+    // register is how the classroom problem turns into practice.
+    var el=document.getElementById('affidavit'); if(!el) return;
+    var r; try{ r=compute(); }catch(e){ el.innerHTML=''; return; }
+    function nm(q){ return esc(q.label); }   // the assigned name replaces the placeholder
+    function list(a){
+      if(!a.length) return '';
+      if(a.length===1) return a[0];
+      return a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+    }
+    function grp(cls){ return P.filter(function(q){ return q.cls===cls; }); }
+    function issueOfPerson(id){
+      return P.filter(function(q){ return q.repOf===id && st[q.id]!==1; });
+    }
+    var kids=grp('desc'),
+        kAlive=kids.filter(function(q){return st[q.id]===0;}),
+        kBefore=kids.filter(function(q){return st[q.id]===1;}),
+        kAfter=kids.filter(function(q){return st[q.id]===2;});
+    var sp=grp('spouse')[0],
+        par=grp('parent'), pAlive=par.filter(function(q){return st[q.id]===0;}),
+        sib=grp('sib'), sAlive=sib.filter(function(q){return st[q.id]===0;});
+
+    var who = DECNAME ? esc(DECNAME) : 'The decedent';
+    var L=[];
+    L.push('<b>'+who+'</b> departed this life, domiciled in the State of Louisiana, <b>'+
+           (will==='yes'?'having left a testament':'intestate')+'</b>, the estate being <b>'+
+           (prop==='community'?'community property':'separate property')+'</b>.');
+
+    if(!kids.length){
+      L.push('The decedent left <b>no children</b>.');
+    } else {
+      var parts=[];
+      parts.push('The decedent left <b>'+kids.length+' child'+(kids.length===1?'':'ren')+'</b>');
+      if(kAlive.length) parts.push('of whom <b>'+kAlive.length+'</b> survived: '+list(kAlive.map(nm)));
+      if(!kAlive.length) parts.push('<b>none of whom survived</b>');
+      L.push(parts.join(', ')+'.');
+      kBefore.forEach(function(k){
+        var iss=issueOfPerson(k.id);
+        L.push('<b>'+nm(k)+'</b> <b>predeceased</b> the decedent'+
+          (iss.length? ', leaving '+iss.length+' child'+(iss.length===1?'':'ren')+' of '+
+             (k.sex==='f'?'her':k.sex==='m'?'his':'their')+' own \u2014 '+list(iss.map(nm))+
+             ' \u2014 who <b>represent</b> '+(k.sex==='f'?'her':k.sex==='m'?'him':'them')+' under arts. 881\u2013885'
+           : ', <b>without issue</b>, and simply drops out')+'.');
+      });
+      kAfter.forEach(function(k){
+        L.push('<b>'+nm(k)+'</b> <b>survived the decedent and died afterwards</b>; the inheritance had already vested, so '+
+          (k.sex==='f'?'her':k.sex==='m'?'his':'their')+' share passes through '+
+          (k.sex==='f'?'her':k.sex==='m'?'his':'their')+' own estate by <b>transmission</b>, art. 937.');
+      });
+    }
+    L.push(sp ? ('The decedent was '+(st[sp.id]===0
+              ? 'survived by <b>'+nm(sp)+'</b>, '+(sp.sex==='f'?'his widow':'her widower')+', not judicially separated'
+              : '<b>not</b> survived by a spouse ('+nm(sp)+' '+(st[sp.id]===1?'predeceased':'died after')+')')+'.')
+            : 'The decedent left <b>no surviving spouse</b>.');
+    if(par.length) L.push(pAlive.length
+        ? 'The decedent is survived by '+list(pAlive.map(nm))+'.'
+        : 'Both parents of the decedent <b>predeceased</b>.');
+    if(sib.length) L.push(sAlive.length
+        ? 'The decedent left <b>'+sAlive.length+'</b> surviving sibling'+(sAlive.length===1?'':'s')+': '+list(sAlive.map(nm))+'.'
+        : 'No brother or sister survived the decedent.');
+
+    var t=(r.takers||[]);
+    var closing = t.length
+      ? 'Accordingly, the estate devolves upon '+list(t.map(function(x){
+            var w=String(x.who).replace(/<[^>]+>/g,'').trim();
+            var v=String(x.what).replace(/<[^>]+>/g,'').trim();
+            return '<b>'+esc(w)+'</b> ('+v+')'; }))+'.'
+      : 'No heir being found, the estate devolves upon <b>the State of Louisiana</b>.';
+
+    el.innerHTML='<div class="affid"><span class="ah">Affidavit of Death and Heirship \u00b7 as the facts now stand</span>'+
+      L.map(function(x){return '<p>'+x+'</p>';}).join('')+
+      '<p class="acl">'+closing+'</p>'+
+      '<p class="asrc">Drafted after the <b>Affidavit of Death and Heirship</b> in the record of '+
+      '<i>Succession of Gore</i>, 223 So. 3d 628 (La. App. 5 Cir. 2017) \u2014 where the parties\u2019 own '+
+      'affidavit, filed years earlier in the father\u2019s succession, ended up being the best evidence of '+
+      'who the children were. From Prof. Hernandez\u2019s Class 5 materials.</p></div>';
   }
 
   // A read-only window on the live state, so the derived relationships can be
@@ -1834,6 +1934,7 @@
     document.getElementById('reveal').classList.toggle('hidden', !quiz||revealed);
     drawDiagram();
     try{ renderLadder(); }catch(e){}
+    try{ renderAffidavit(); }catch(e){}
     if(!show) return;
 
     var r2=compute();
